@@ -32,7 +32,7 @@ def split_sequences(df, n_steps_in, n_steps_out):
         y.append(seq_y)
     return array(X), array(y)
 
-def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, validation_x, validation_y,epochs=100, batch_size=64, model_name="lstm"):
+def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, validation_x, validation_y, batch_size,epochs=100, model_name="lstm"):
     import time
     from numpy import array
     import tensorflow as tf
@@ -51,7 +51,8 @@ def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, vali
 
     # define model
     model = Sequential()
-    model.add(LSTM(100, return_sequences=True, input_shape=(train_x.shape[1:])))
+    model.add(LSTM(120,return_sequences=True,  input_shape=(train_x.shape[1:])))
+
     #model.add(BatchNormalization())  # normalizes activation outputs, same reason you want to normalize your input data.
     model.add(LeakyReLU(alpha=0.1))
     model.add(Dropout(0.2))
@@ -68,7 +69,7 @@ def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, vali
     #checkpoint = ModelCheckpoint("models/{}.model".format(filepath, monitor='val_acc', verbose=1, save_best_only=True,
     #                                                      mode='max'))  # saves only the best ones
     # fit model
-    model.fit(train_x, train_y, epochs=EPOCHS, verbose=1, validation_data=(validation_x, validation_y), callbacks=callbacks, batch_size=BATCH_SIZE)
+    model.fit(train_x, train_y, epochs=2, verbose=1, validation_data=(validation_x, validation_y), callbacks=callbacks)
     model_name = "lstm_right_enc_" + (pd.Timestamp('now')).strftime(
         "%Y_%m_%d") + ".h5"  # save model and architecture to single file
     # Score model
@@ -88,8 +89,10 @@ df = df.set_index('time')
 df.columns = ['left_sensor', 'pressure', 'right_sensor']
 df.dropna(inplace=True)
 
-SEQ_LEN = 120  # how long of a preceeding sequence to collect for RNN
-FUTURE_PERIOD_PREDICT = 120  # how far into the future are we trying to predict?
+df = df[['left_sensor', 'right_sensor']]
+
+SEQ_LEN = 240  # how long of a preceeding sequence to collect for RNN
+FUTURE_PERIOD_PREDICT = 1  # how far into the future are we trying to predict?
 
 ## here, split away some slice of the future data from the main main_df.
 times = df.index.values
@@ -109,16 +112,30 @@ print(f"train data: {len(train_x)} validation: {len(validation_x)}")
 #train_x
 #train_y
 
-model = multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, validation_x, validation_y,epochs=100, batch_size=64, model_name="lstm")
+
+def computeHCF(x, y):
+    if x > y:
+        smaller = y
+    else:
+        smaller = x
+    for i in range(1, smaller+1):
+        if((x % i == 0) and (y % i == 0)):
+            hcf = i
+
+    return hcf
+
+batch_size= computeHCF(train_x.shape[0], validation_x.shape[0])
+
+model = multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, validation_x, validation_y,epochs=100, batch_size=batch_size, model_name="lstm")
 
 
 ##### TESTING
 
-df_test = df.iloc[:, :]
+df_test = df.iloc[SEQ_LEN:, :]
 test_x, test_y = split_sequences(df_test, SEQ_LEN,FUTURE_PERIOD_PREDICT)
 
-yhat = model.predict(test_x, verbose=0)
-#print(len(yhat.flatten()))
-yhat[:1,:].flatten()
+yhat = model.predict(test_x, verbose=0, batch_size=batch_size)
+print(len(yhat.flatten()))
+#yhat[:1,:].flatten()
 
 
