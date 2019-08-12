@@ -41,7 +41,7 @@ def split_sequences(df, n_steps_in, n_steps_out):
         y.append(seq_y)
     return array(X), array(y)
 
-def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, validation_x, validation_y, batch_size,epochs=100, model_name="lstm"):
+def multi_step_lstm_model(lookback, lookahead, train_x, train_y, validation_x, validation_y, batch_size,epochs=100, model_name="lstm"):
 	import time
 	from numpy import array
 	import tensorflow as tf
@@ -57,11 +57,11 @@ def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, vali
 
 	EPOCHS = epochs #how many passes through our data
 	BATCH_SIZE = batch_size  # how many batches? Try smaller batch if you're getting OOM (out of memory) errors.
-	NAME = f"{SEQ_LEN}-SEQ-{FUTURE_PERIOD_PREDICT}-PRED-{int(time.time())}"  # a unique name for the model
+	NAME = f"{lookback}-SEQ-{lookahead}-PRED-{int(time.time())}"  # a unique name for the model
 
 	# define model
 	model = Sequential()
-	#input_x = Input(batch_shape=(BATCH_SIZE, SEQ_LEN, train_x.shape[2]), name='input')
+	#input_x = Input(batch_shape=(BATCH_SIZE, lookback, train_x.shape[2]), name='input')
 	model.add(LSTM(120,return_sequences=True, batch_input_shape = (BATCH_SIZE,None, 1),stateful=True, input_shape=(train_x.shape[1:])))
 
 	#model.add(BatchNormalization())  # normalizes activation outputs, same reason you want to normalize your input data.
@@ -69,7 +69,7 @@ def multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, vali
 	model.add(Dropout(0.2))
 	model.add(LSTM(80, stateful=True))
 	model.add(LeakyReLU(alpha=0.1))
-	model.add(Dense(FUTURE_PERIOD_PREDICT))
+	model.add(Dense(lookahead))
 	model.compile(optimizer='adam', loss='mse')
 	# callbacks
 	# patient early stopping
@@ -103,8 +103,8 @@ df.dropna(inplace=True)
 
 df = df[['left_sensor', 'right_sensor']]
 
-SEQ_LEN = 180  # how long of a preceeding sequence to collect for RNN
-FUTURE_PERIOD_PREDICT = 1  # how far into the future are we trying to predict?
+lookback = 120  # how long of a preceeding sequence to collect for RNN
+lookahead = 1  # how far into the future are we trying to predict?
 
 ## here, split away some slice of the future data from the main main_df.
 times = df.index.values
@@ -113,17 +113,16 @@ last_10pct = df.index.values[-int(0.10*len(times))]
 validation_main_df = df[(df.index >= last_10pct)]
 main_df = df[(df.index < last_10pct)]
 
-#train_x, train_y = preprocess_df(main_df, SEQ_LEN)
-#validation_x, validation_y = preprocess_df(validation_main_df, SEQ_LEN)
+#train_x, train_y = preprocess_df(main_df, lookback)
+#validation_x, validation_y = preprocess_df(validation_main_df, lookback)
 
-train_x, train_y = split_sequences(main_df, SEQ_LEN,FUTURE_PERIOD_PREDICT)
-validation_x, validation_y = split_sequences(validation_main_df, SEQ_LEN,FUTURE_PERIOD_PREDICT)
+train_x, train_y = split_sequences(main_df, lookback,lookahead)
+validation_x, validation_y = split_sequences(validation_main_df, lookback,lookahead)
 
 print(f"train data: {len(train_x)} validation: {len(validation_x)}")
 
 #train_x
 #train_y
-
 
 def computeHCF(x, y):
     if x > y:
@@ -139,13 +138,13 @@ def computeHCF(x, y):
 batch_size= computeHCF(train_x.shape[0], validation_x.shape[0])
 #batch_size = 500
 
-model = multi_step_lstm_model(SEQ_LEN, FUTURE_PERIOD_PREDICT, train_x, train_y, validation_x, validation_y,epochs=100, batch_size=batch_size, model_name="lstm")
+model = multi_step_lstm_model(lookback, lookahead, train_x, train_y, validation_x, validation_y,epochs=100, batch_size=batch_size, model_name="lstm")
 
 
 ##### TESTING
 
-df_test = df.iloc[SEQ_LEN:, :]
-test_x, test_y = split_sequences(df_test, SEQ_LEN,FUTURE_PERIOD_PREDICT)
+df_test = df.iloc[lookback:, :]
+test_x, test_y = split_sequences(df_test, lookback,lookahead)
 
 yhat = model.predict(test_x, verbose=0, batch_size=batch_size)
 print(len(yhat.flatten()))
