@@ -1,8 +1,13 @@
+from os.path import dirname, join
+current_dir = dirname(__file__)
+
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 
-final_df = pd.read_csv("dummy_data.csv", index_col=0)
+file_path = join(current_dir, "./dummy_data.csv")
+
+final_df = pd.read_csv(file_path, index_col=0)
 final_df.index = pd.to_datetime(final_df.index)
 
 chart_title = "test"
@@ -41,7 +46,7 @@ def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filen
 
     # Create plotly figure dict skeleton
     fig = {"data": [],
-           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":20, "color":'#7f7f7f'}}, 
+           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, 
            "xaxis": {"title": {"text":limits_titles['x_axis_title']}, "range":[final_df.index.min(), final_df.index.max()]},
                       "yaxis": {"title": {"text":limits_titles['y_axis_title']}},"shapes":shapes}}
 
@@ -56,7 +61,7 @@ def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filen
     # Test Plots
     #pio.show(fig)
     #py.offline.plot(fig)
-    pio.write_image(fig, image_filename, "png", width=1600, height=800)
+    pio.write_image(fig, image_filename, "png", width=1600, height=800, scale=2)
 
     return fig
 
