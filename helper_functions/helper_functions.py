@@ -1,10 +1,21 @@
-def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filename):
+import pandas as pd
+import plotly.graph_objects as go
+import plotly.io as pio
+
+final_df = pd.read_csv("dummy_data.csv", index_col=0)
+final_df.index = pd.to_datetime(final_df.index)
+
+chart_title = "test"
+image_filename = "test_plotly_plot.png"
+upper_warning_limit, upper_error_limit = 28, 30
+
+def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title):
     # Prep Plotly trace data
     trace_dfs = [final_df[[col]].dropna() for col in final_df.columns]
-    trace_names = ["Temp_Lower_CI", "Temp_LT_Pred", "Temp_Upper_CI", "Temp_LT_Raw" ]
+    trace_names = list(final_df.columns)
     trace_modes = ["lines+markers", "lines+markers", "lines+markers", "markers"]
     limits_titles = {"UEL": upper_error_limit, "UWL": upper_warning_limit, "x_axis_title": "Date/Time",
-                     "y_axis_title": "Temp (C)", "chart_title": image_filename}
+                     "y_axis_title": "Temp (C)", "chart_title": chart_title}
 
     #Create a "shapes list to hold limit lines graph data
     shapes = [{"type":"line", "x0":(final_df.index.min().tz_localize(None) + pd.Timedelta(days=-5)), "y0" : upper_warning_limit,
@@ -30,7 +41,7 @@ def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filen
 
     # Create plotly figure dict skeleton
     fig = {"data": [],
-           "layout": {"title": { "text":limits_titles['chart_title']}, "xaxis": {"title": {"text":limits_titles['x_axis_title']}},
+           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":18, "color":'#7f7f7f'}}, "xaxis": {"title": {"text":limits_titles['x_axis_title']}},
                       "yaxis": {"title": {"text":limits_titles['y_axis_title']}},"shapes":shapes}}
 
     # loop through all x,y combo (index and value pairs)
@@ -44,6 +55,8 @@ def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filen
     # Test Plots
     #pio.show(fig)
     #py.offline.plot(fig)
-    pio.write_image(fig, img_path, "png", width=1600, height=800)
+    pio.write_image(fig, image_filename, "png", width=1600, height=800)
 
     return fig
+
+get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
