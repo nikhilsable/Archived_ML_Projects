@@ -11,16 +11,29 @@ final_df = pd.read_csv(file_path, index_col=0)
 final_df.index = pd.to_datetime(final_df.index)
 
 chart_title = "test"
-image_filename = "test_plotly_plot.png"
+image_filename = join(current_dir, "test_plotly_plot.png")
 upper_warning_limit, upper_error_limit = 28, 30
 
-def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title):
+def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, 
+                    image_filename, chart_title, x_axis_title = "Date/Time", y_axis_title = "Value"):
+    '''Pass in a dataframe with chart attributes, and it returns a plotly figure/graph object and saves pretty image''' 
+
+    def get_trace_modes(trace_dfs):
+        '''Set mode (plotting style) for plotly traces'''
+
+        trace_modes = []
+
+        for item in trace_dfs:
+            trace_modes.append("markers") if "_Raw" in item.columns.values[0] else trace_modes.append("lines+markers") 
+
+        return trace_modes
+
     # Prep Plotly trace data
     trace_dfs = [final_df[[col]].dropna() for col in final_df.columns]
     trace_names = list(final_df.columns)
-    trace_modes = ["lines+markers", "lines+markers", "lines+markers", "markers"]
-    limits_titles = {"UEL": upper_error_limit, "UWL": upper_warning_limit, "x_axis_title": "Date/Time",
-                     "y_axis_title": "Temp (C)", "chart_title": chart_title}
+    trace_modes = get_trace_modes(trace_dfs)
+    limits_titles = {"UEL": upper_error_limit, "UWL": upper_warning_limit, "x_axis_title": x_axis_title,
+                     "y_axis_title": y_axis_title, "chart_title": chart_title}
 
     #Create a "shapes list to hold limit lines graph data
     shapes = [{"type":"line", "x0":final_df.index.min().tz_localize(None), "y0" : upper_warning_limit,
@@ -65,4 +78,4 @@ def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filen
 
     return fig
 
-get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
+get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
