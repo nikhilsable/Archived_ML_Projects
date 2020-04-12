@@ -60,8 +60,8 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
     # Create plotly figure dict skeleton
     fig = {"data": [],
            "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, 
-           "xaxis": {"title": {"text":limits_titles['x_axis_title']}, "range":[final_df.index.min(), final_df.index.max()]},
-                      "yaxis": {"title": {"text":limits_titles['y_axis_title']}},"shapes":shapes}}
+           "xaxis": {"title": {"text":limits_titles['x_axis_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, "range":[final_df.index.min(), final_df.index.max()]},
+                      "yaxis": {"title": {"text":limits_titles['y_axis_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}},"shapes":shapes}}
 
     # loop through all x,y combo (index and value pairs)
     for value in range(0, len(final_df.columns)):
