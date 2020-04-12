@@ -18,30 +18,31 @@ def get_plotly_fig(final_df, upper_error_limit, upper_warning_limit, image_filen
                      "y_axis_title": "Temp (C)", "chart_title": chart_title}
 
     #Create a "shapes list to hold limit lines graph data
-    shapes = [{"type":"line", "x0":(final_df.index.min().tz_localize(None) + pd.Timedelta(days=-5)), "y0" : upper_warning_limit,
-                "x1":(final_df.index.max().tz_localize(None) + pd.Timedelta(days=5)), "y1":upper_warning_limit,"line":{"color":"orange"}
+    shapes = [{"type":"line", "x0":final_df.index.min().tz_localize(None), "y0" : upper_warning_limit,
+                "x1":final_df.index.max().tz_localize(None), "y1":upper_warning_limit,"line":{"color":"orange"}
                },
 
-              {"type": "line", "x0": final_df.index.min().tz_localize(None) + pd.Timedelta(days=-5), "y0": upper_error_limit,
-               "x1": final_df.index.max().tz_localize(None) + pd.Timedelta(days=5), "y1": upper_error_limit, "line":{"color":"red"}},
+              {"type": "line", "x0": final_df.index.min().tz_localize(None), "y0": upper_error_limit,
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_error_limit, "line":{"color":"red"}},
 
               #Green Zone
-              {"type": "rect", "x0": final_df.index.min().tz_localize(None) + pd.Timedelta(days=-5),
-               "y0": (final_df.min().min() - 1),
-               "x1": final_df.index.max().tz_localize(None) + pd.Timedelta(days=5), "y1": upper_warning_limit,
+              {"type": "rect", "x0": final_df.index.min().tz_localize(None),
+               "y0": (final_df.min().min()) - ((final_df.min().min())*0.05), #5% margin buffer
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_warning_limit,
                "line": {"color": "green"}, "fillcolor":'rgba(0,255,0,0.2)'},
 
               #Red Zone
-              {"type": "rect", "x0": final_df.index.min().tz_localize(None) + pd.Timedelta(days=-5),
+              {"type": "rect", "x0": final_df.index.min().tz_localize(None),
                "y0": upper_warning_limit,
-               "x1": final_df.index.max().tz_localize(None) + pd.Timedelta(days=5), "y1": upper_error_limit,
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_error_limit,
                "line": {"color": "red"}, "fillcolor":'rgba(255,0,0,0.2)'}
 
               ]
 
     # Create plotly figure dict skeleton
     fig = {"data": [],
-           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":18, "color":'#7f7f7f'}}, "xaxis": {"title": {"text":limits_titles['x_axis_title']}},
+           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":20, "color":'#7f7f7f'}}, 
+           "xaxis": {"title": {"text":limits_titles['x_axis_title']}, "range":[final_df.index.min(), final_df.index.max()]},
                       "yaxis": {"title": {"text":limits_titles['y_axis_title']}},"shapes":shapes}}
 
     # loop through all x,y combo (index and value pairs)
