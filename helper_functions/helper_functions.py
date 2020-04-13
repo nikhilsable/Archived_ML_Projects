@@ -103,7 +103,7 @@ get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_f
 #     trace_dfs = [final_df[[col]].dropna() for col in final_df.columns]
 #     trace_names = list(final_df.columns)
 #     trace_modes = get_trace_modes(trace_dfs)
-#     limits_titles = {"UEL": upper_error_limit, "UWL": upper_warning_limit, "LEL":upper_error_limit,
+#     limits_titles = {"UEL": upper_error_limit, "UWL": upper_warning_limit, "LEL":lower_error_limit,
 #                       "LWL":lower_warning_limit "x_axis_title": x_axis_title,
 #                      "y_axis_title": y_axis_title, "chart_title": chart_title}
 
