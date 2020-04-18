@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
+import plotly as py
 
 file_path = join(current_dir, "./dummy_data.csv")
 
@@ -76,7 +77,7 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
     fig = go.Figure(fig)
     # Test Plots
     #pio.show(fig)
-    #py.offline.plot(fig)
+    py.offline.plot(fig)
     pio.write_image(fig, image_filename, "png", width=1600, height=800, scale=2)
 
     return fig
