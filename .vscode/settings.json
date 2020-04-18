@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/home/nikhil/anaconda3/envs/tf2/bin/python"
+    "python.pythonPath": "/home/nikhil/anaconda3/envs/pyro/bin/python",
+    "editor.fontSize": 13
 }

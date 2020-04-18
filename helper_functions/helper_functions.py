@@ -2,6 +2,7 @@ from os.path import dirname, join
 current_dir = dirname(__file__)
 
 import pandas as pd
+import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 
@@ -14,7 +15,6 @@ chart_title = "test"
 image_filename = join(current_dir, "test_plotly_plot.png")
 upper_warning_limit, upper_error_limit = 28, 30
 lower_warning_limit, lower_error_limit = -2, -4
-
 
 # For a time-series plot with only upper warning and error limits
 def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, 
@@ -157,4 +157,3 @@ get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_f
 #     return fig
 
 #get_plotly_fig_ts_data(final_df, lower_error_limit, lower_warning_limit, upper_error_limit, upper_warning_limit, image_filename, chart_title)
-
