@@ -6,6 +6,8 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
 import plotly as py
+import pymc3 as pm
+
 
 file_path = join(current_dir, "./dummy_data.csv")
 
@@ -159,7 +161,7 @@ get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_f
 
 #get_plotly_fig_ts_data(final_df, lower_error_limit, lower_warning_limit, upper_error_limit, upper_warning_limit, image_filename, chart_title)
 
-def bay_lin_reg(df, pred_for_days, mnumber):
+def bay_lin_reg_pymc(df, pred_for_days, mnumber):
     # ** Takes in a univariate dataframe (x=predictor, y=target) + prediction for days variable
     #   and performs Bayesian Linear Regression analysis on it.
     #   Auto imputes missing data and returns a trace (draws from posterior dist)
@@ -216,7 +218,7 @@ def bay_lin_reg(df, pred_for_days, mnumber):
     pred_for_days = pred_for_days
     future_df = pd.DataFrame(
         index=pd.date_range(start=orig_df.index.min(), end=(orig_df.index.max() + pd.Timedelta(days=pred_for_days)),
-                            freq='D'))
+                            freq=orig_df.index.inferred_freq))
 
     # prep dataset
     #future_df = future_df.reset_index()
