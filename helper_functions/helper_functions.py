@@ -158,3 +158,79 @@ get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_f
 #     return fig
 
 #get_plotly_fig_ts_data(final_df, lower_error_limit, lower_warning_limit, upper_error_limit, upper_warning_limit, image_filename, chart_title)
+
+def bay_lin_reg(df, pred_for_days, mnumber):
+    # ** Takes in a univariate dataframe (x=predictor, y=target) + prediction for days variable
+    #   and performs Bayesian Linear Regression analysis on it.
+    #   Auto imputes missing data and returns a trace (draws from posterior dist)
+    #   and a final_df, which contians lower, upper bounds along wiht y_pred
+
+    #logging.info("Beginning Bayesian Linear Regression for {}...".format(mnumber))
+
+    # Initialize random number generator
+    np.random.seed(123)
+
+    # hold original df
+    orig_df = df
+
+    df = df.fillna(method='ffill')
+
+    # prep dataset
+    df = df.reset_index()
+    df.columns = ['x', 'y']
+    df.x = df.x.values.astype(np.int64)
+
+    # scale predictors
+    scaler = StandardScaler() #MinMaxScaler(feature_range=(0, 1))
+    df.x = scaler.fit_transform(df.x.values.reshape(-1, 1))
+
+    # Predictor variables
+    X1 = df.x.values.reshape(-1,1)
+
+    # outcome/target variable
+    y = df.y
+
+    basic_model = pm.Model()
+    with basic_model:
+        # priors for unknown model params
+        alpha = pm.Normal('alpha', mu=1, sigma=1)
+        beta = pm.Normal('beta', mu=1, sigma=1)  # shape=2
+        sigma = pm.HalfNormal('sigma', sigma=1)
+
+        # expected value of outcome---> generative equation-->generates value/stencil
+        mu = alpha + beta * X1
+
+        # Likelihood (sampling distribution) of observations
+        Y_obs = pm.Normal('Y_obs', mu=mu, sigma=sigma, observed=y)
+
+        # model fitting
+        with basic_model:
+            # draw 1000 posterior samples
+            trace = pm.sample(500, chains=1, tune=500)  # cores=1,
+            # pm.traceplot(trace)
+            print(pm.summary(trace).round(2))
+            trace_df = pm.backends.tracetab.trace_to_dataframe(trace, chains=None, varnames=None,
+                                                               include_transformed=True)
+
+    # create future df
+    pred_for_days = pred_for_days
+    future_df = pd.DataFrame(
+        index=pd.date_range(start=orig_df.index.min(), end=(orig_df.index.max() + pd.Timedelta(days=pred_for_days)),
+                            freq='D'))
+
+    # prep dataset
+    #future_df = future_df.reset_index()
+    #future_df.columns = ['x']
+    future_df['x'] = future_df.index.values.astype(np.int64)
+
+    # scale predictors and create hpd values
+    future_df['x'] = scaler.transform(future_df['x'].values.reshape(-1, 1))
+
+    future_df['y_pred'] = trace['alpha'].mean() + trace['beta'].mean() * future_df['x']
+    future_df['y_pred_lower'] = pm.hpd(trace)['alpha'][0] + pm.hpd(trace)['beta'][0] * future_df['x']
+    future_df['y_pred_upper'] = pm.hpd(trace)['alpha'][1] + pm.hpd(trace)['beta'][1] * future_df['x']
+    future_df = future_df[['y_pred_lower', 'y_pred', 'y_pred_upper']]
+
+    final_df = future_df #orig_df.append(future_df, ignore_index=False)
+
+    return trace, final_df
