@@ -1,10 +1,8 @@
-# To add a new cell, type '# %%'
-# To add a new markdown cell, type '# %% [markdown]'
-# %%
-from IPython import get_ipython
+
 
 # %%
 from functools import partial
+import os
 import torch
 import numpy as np
 import pandas as pd
@@ -29,24 +27,7 @@ from pyro.nn import PyroModule
 from pyro.infer.autoguide import AutoDiagonalNormal
 from pyro.infer import SVI, Trace_ELBO
 from pyro.infer import Predictive
-
-
-# Set matplotlib settings
-get_ipython().run_line_magic('matplotlib', 'inline')
-plt.style.use('default')
-
-
-# %%
-data = pd.read_csv("./dummy_data.csv", index_col=0)
-data.index = pd.to_datetime(data.index)
-df = data[["_Raw_Data"]].dropna()
-
-
-# %%
-df.columns=['value']
-df.head()
-
-
+import plotly as py
 
 
 # %%
@@ -194,17 +175,111 @@ def bay_lin_reg_pyro(df, pred_for_days):
         "y_perc_5": y["5%"],
         "y_perc_95": y["95%"]})
 
-    predictions = predictions.set_index('date').tz_localize('UTC').join(orig_df, how='inner')
+    predictions = predictions.set_index('date').tz_localize(None).join(orig_df, how='outer')
     predictions = predictions[[orig_df.columns[0], 'mu_mean', 'y_perc_5', 'y_perc_95']]
 
     return predictions
 
-test = bay_lin_reg_pyro(df, 3)
+#combined_df.plot(figsize=(12, 10), alpha=0.2, style="8")
 
-combined_df = test
+def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, 
+                    image_filename, chart_title, x_axis_title = "Date/Time", y_axis_title = "Value"):
+    '''Pass in a dataframe with chart attributes, and it returns a plotly figure/graph object and saves pretty image''' 
+
+    def get_trace_modes(trace_dfs):
+        '''Set mode (plotting style) for plotly traces'''
+
+        trace_modes = []
+
+        for item in trace_dfs:
+            trace_modes.append("markers") if "_Raw" in item.columns.values[0] else trace_modes.append("lines+markers") 
+
+        return trace_modes
+
+    # Prep Plotly trace data
+    trace_dfs = [final_df[[col]].dropna() for col in final_df.columns]
+    trace_names = list(final_df.columns)
+    trace_modes = get_trace_modes(trace_dfs)
+    limits_titles = {"UEL": upper_error_limit, "UWL": upper_warning_limit, "x_axis_title": x_axis_title,
+                     "y_axis_title": y_axis_title, "chart_title": chart_title}
+
+    #Create a "shapes list to hold limit lines graph data
+    shapes = [{"type":"line", "x0":final_df.index.min().tz_localize(None), "y0" : upper_warning_limit,
+                "x1":final_df.index.max().tz_localize(None), "y1":upper_warning_limit,"line":{"color":"orange"}
+               },
+
+              {"type": "line", "x0": final_df.index.min().tz_localize(None), "y0": upper_error_limit,
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_error_limit, "line":{"color":"red"}},
+
+              #Green Zone
+              {"type": "rect", "x0": final_df.index.min().tz_localize(None),
+               "y0": (final_df.min().min()) - ((final_df.min().min())*0.05), #5% margin buffer
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_warning_limit,
+               "line": {"color": "green"}, "fillcolor":'rgba(0,255,0,0.2)'},
+
+              #Red Zone
+              {"type": "rect", "x0": final_df.index.min().tz_localize(None),
+               "y0": upper_warning_limit,
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_error_limit,
+               "line": {"color": "red"}, "fillcolor":'rgba(255,0,0,0.2)'}
+
+              ]
+
+    # Create plotly figure dict skeleton
+    fig = {"data": [],
+           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, 
+           "xaxis": {"title": {"text":limits_titles['x_axis_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, "range":[final_df.index.min(), final_df.index.max()]},
+                      "yaxis": {"title": {"text":limits_titles['y_axis_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}},"shapes":shapes}}
+
+    # loop through all x,y combo (index and value pairs)
+    for value in range(0, len(final_df.columns)):
+        fig["data"].append({"type": "scatter", "x": pd.to_datetime(trace_dfs[value].index.ravel()),
+                            "y": trace_dfs[value].values.ravel(), "name": trace_names[value],
+                            "mode": trace_modes[value]})
+
+    # Convert Plotly dict to plotly graph object
+    fig = go.Figure(fig)
+    # Test Plots
+    #pio.show(fig)
+    py.offline.plot(fig)
+    pio.write_image(fig, image_filename, "png", width=1600, height=800, scale=2)
+
+    return fig
+
+
+# %%
+data = pd.read_csv("./jena_climate_2009_2016.csv", index_col=0)
+#data.index = pd.to_datetime(data.index)
+#df = data[["_Raw_Data"]].dropna()
+df = data[['T (degC)']]
+df.index = pd.to_datetime(df.index)
+df = df.resample('D').mean()
+df.head()
+
+
+# %%
+df.columns=['value']
+
+lookback = 1000
+lookforward = 90
+
+df_tr = df[pd.Timestamp(df.index.max())-pd.Timedelta(days = lookback):]
+
+combined_df = bay_lin_reg_pyro(df_tr, lookforward)
+
 combined_df.columns = ['Raw_Data', 'LT_Pred', 'LT_Lower_CI', 'LT_Upper_CI']
 
-combined_df.plot(figsize=(10, 12), alpha=0.2, style="8")
+final_df = df.join(combined_df, how='outer')
+
+chart_title = "test"
+image_filename = join(current_dir, "test_plotly_plot.png")
+upper_warning_limit, upper_error_limit = final_df.max().max(), final_df.max().max(),
+lower_warning_limit, lower_error_limit = final_df.min().min(), final_df.min().min()
+
+fig = get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
+pio.show(fig)
+
+# %%
 
 
 # %%
