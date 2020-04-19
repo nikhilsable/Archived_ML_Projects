@@ -176,7 +176,7 @@ def bay_lin_reg_pyro(df, pred_for_days):
         "y_perc_95": y["95%"]})
 
     predictions = predictions.set_index('date').tz_localize(None).join(orig_df, how='outer')
-    predictions = predictions[[orig_df.columns[0], 'mu_mean', 'y_perc_5', 'y_perc_95']]
+    predictions = predictions[[orig_df.columns[0], 'mu_mean', 'mu_perc_5', 'mu_perc_95']]
 
     return predictions
 
@@ -248,8 +248,6 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
 
 # %%
 data = pd.read_csv("./jena_climate_2009_2016.csv", index_col=0)
-#data.index = pd.to_datetime(data.index)
-#df = data[["_Raw_Data"]].dropna()
 df = data[['T (degC)']]
 df.index = pd.to_datetime(df.index)
 df = df.resample('D').mean()
@@ -260,7 +258,7 @@ df.head()
 df.columns=['value']
 
 lookback = 1000
-lookforward = 90
+lookforward = 1000
 
 df_tr = df[pd.Timestamp(df.index.max())-pd.Timedelta(days = lookback):]
 
@@ -277,3 +275,5 @@ lower_warning_limit, lower_error_limit = final_df.min().min(), final_df.min().mi
 
 fig = get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
 pio.show(fig)
+
+# %%
