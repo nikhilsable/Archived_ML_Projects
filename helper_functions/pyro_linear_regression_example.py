@@ -180,7 +180,6 @@ def bay_lin_reg_pyro(df, pred_for_days):
 
     return predictions
 
-#combined_df.plot(figsize=(12, 10), alpha=0.2, style="8")
 
 def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, 
                     image_filename, chart_title, x_axis_title = "Date/Time", y_axis_title = "Value"):
@@ -192,7 +191,7 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
         trace_modes = []
 
         for item in trace_dfs:
-            trace_modes.append("markers") if "_Raw" in item.columns.values[0] else trace_modes.append("lines+markers") 
+            trace_modes.append("markers") if "Raw" in item.columns.values[0] else trace_modes.append("lines+markers") 
 
         return trace_modes
 
@@ -278,8 +277,3 @@ lower_warning_limit, lower_error_limit = final_df.min().min(), final_df.min().mi
 
 fig = get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
 pio.show(fig)
-
-# %%
-
-
-# %%
