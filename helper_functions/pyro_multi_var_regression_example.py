@@ -43,16 +43,11 @@ def bay_lin_reg_pyro(df, pred_for_days):
 
     #Based on input of SME's - remove/modify the fill method Minoti786
     
-    df = df.fillna(method='ffill')
-
-    # prep dataset
-    df = df.reset_index()
-    df.columns = ['x', 'y']
-    df.x = df.x.values.astype(np.int64)
-
+    #df = df.fillna(method='ffill')
      # scale predictors
     scaler = StandardScaler()
-    df.x = scaler.fit_transform(df.x.values.reshape(-1, 1))
+    #df.x = scaler.fit_transform(df.x.values.reshape(-1, 1))
+    df[df.columns.to_list()[:-1]] = scaler.fit_transform(df[df.columns.to_list()[:-1]])
 
     data = torch.tensor(df.values, dtype=torch.float)
     x_data, y_data = data[:, :-1], data[:, -1]
@@ -263,6 +258,11 @@ lookforward = 1000
 
 df_tr = df[pd.Timestamp(df.index.max())-pd.Timedelta(days = lookback):]
 
+# prep dataset for ML
+df_tr = df.reset_index()
+df_tr.columns = ['x', 'y']
+df_tr.x = df_tr.x.values.astype(np.int64)
+
 combined_df = bay_lin_reg_pyro(df_tr, lookforward)
 
 combined_df.columns = ['Raw_Data', 'LT_Pred', 'LT_Lower_CI', 'LT_Upper_CI']
@@ -270,11 +270,13 @@ combined_df.columns = ['Raw_Data', 'LT_Pred', 'LT_Lower_CI', 'LT_Upper_CI']
 final_df = df.join(combined_df, how='outer')
 
 chart_title = "test"
-image_filename = join(current_dir, "test_plotly_plot.png")
+image_filename = join(current_dir, "test_plotly_plot_multi_bay_pyro.png")
 upper_warning_limit, upper_error_limit = final_df.max().max(), final_df.max().max(),
 lower_warning_limit, lower_error_limit = final_df.min().min(), final_df.min().min()
 
 fig = get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
 pio.show(fig)
+
+# %%
 
 # %%
