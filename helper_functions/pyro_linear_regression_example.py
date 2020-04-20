@@ -56,7 +56,7 @@ def bay_lin_reg_pyro(df, pred_for_days):
     x_data, y_data = data[:, :-1], data[:, -1]
 
     # Regression model
-    linear_reg_model = PyroModule[nn.Linear]((len(df.columns)-1), 1)
+    linear_reg_model = PyroModule[nn.Linear]((len(df.columns)-1), 1) # -1 because the lats col is target
 
     # Define loss and optimize
     loss_fn = torch.nn.MSELoss(reduction='sum')
@@ -97,7 +97,6 @@ def bay_lin_reg_pyro(df, pred_for_days):
     fit["mean"] = linear_reg_model(x_data).detach().cpu().numpy()
     #fit.plot()
 
-    from pyro.nn import PyroSample
 
     class BayesianRegression(PyroModule):
         def __init__(self, in_features, out_features):
