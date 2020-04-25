@@ -20,9 +20,9 @@ upper_warning_limit, upper_error_limit = 28, 30
 lower_warning_limit, lower_error_limit = -2, -4
 
 # For a time-series plot with only upper warning and error limits
-def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, 
-                    image_filename, chart_title, x_axis_title = "Date/Time", y_axis_title = "Value"):
-    '''Pass in a dataframe with chart attributes, and it returns a plotly figure/graph object and saves pretty image''' 
+def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
+                    image_filename, chart_title, img_path, x_axis_title = "Date/Time", y_axis_title = "Value"):
+    '''Pass in a dataframe with chart attributes, and it returns a plotly figure/graph object and saves pretty image'''
 
     def get_trace_modes(trace_dfs):
         '''Set mode (plotting style) for plotly traces'''
@@ -30,7 +30,7 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
         trace_modes = []
 
         for item in trace_dfs:
-            trace_modes.append("markers") if "_Raw" in item.columns.values[0] else trace_modes.append("lines+markers") 
+            trace_modes.append("markers") if (("_Raw" in item.columns.values[0]) | ("_Agg" in item.columns.values[0])) else trace_modes.append("lines+markers")
 
         return trace_modes
 
@@ -42,8 +42,13 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
                      "y_axis_title": y_axis_title, "chart_title": chart_title}
 
     #Create a "shapes list to hold limit lines graph data
-    shapes = [{"type":"line", "x0":final_df.index.min().tz_localize(None), "y0" : upper_warning_limit,
-                "x1":final_df.index.max().tz_localize(None), "y1":upper_warning_limit,"line":{"color":"orange"}
+    shapes = [ #"Now"/Today line
+              {"type": "line", "x0": pd.Timestamp('now').tz_localize(None), "y0": (final_df.min().min()) - ((final_df.min().min())*0.05),
+               "x1": pd.Timestamp('now').tz_localize(None), "y1": upper_error_limit, "line": {"color": "black"}
+               },
+
+              {"type": "line", "x0": final_df.index.min().tz_localize(None), "y0": upper_warning_limit,
+               "x1": final_df.index.max().tz_localize(None), "y1": upper_warning_limit, "line": {"color": "orange"}
                },
 
               {"type": "line", "x0": final_df.index.min().tz_localize(None), "y0": upper_error_limit,
@@ -65,9 +70,9 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
 
     # Create plotly figure dict skeleton
     fig = {"data": [],
-           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, 
-           "xaxis": {"title": {"text":limits_titles['x_axis_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}, "range":[final_df.index.min(), final_df.index.max()]},
-                      "yaxis": {"title": {"text":limits_titles['y_axis_title'], "font":{"family":"Courier New, monospace", "size":24, "color":'#7f7f7f'}}},"shapes":shapes}}
+           "layout": {"title": { "text":limits_titles['chart_title'], "font":{"family":"Arial", "size":28, "color":'Black'}},
+           "xaxis": {"title": {"text":limits_titles['x_axis_title'], "font":{"family":"Arial", "size":24, "color":'Black'}}, "range":[final_df.index.min(), final_df.index.max()]},
+                      "yaxis": {"title": {"text":limits_titles['y_axis_title'], "font":{"family":"Arial", "size":24, "color":'Black'}}},"shapes":shapes}}
 
     # loop through all x,y combo (index and value pairs)
     for value in range(0, len(final_df.columns)):
@@ -79,12 +84,12 @@ def get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit,
     fig = go.Figure(fig)
     # Test Plots
     #pio.show(fig)
-    py.offline.plot(fig)
-    pio.write_image(fig, image_filename, "png", width=1600, height=800, scale=2)
+    #py.offline.plot(fig)
+    pio.write_image(fig, img_path, "png", width=1600, height=800, scale=2)
 
     return fig
 
-get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title)
+get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_filename, chart_title, image_filename)
 
 
 # For a time-series plot with upper AND lower warning and error limits
@@ -236,3 +241,80 @@ def bay_lin_reg_pymc(df, pred_for_days, mnumber):
     final_df = future_df #orig_df.append(future_df, ignore_index=False)
 
     return trace, final_df
+
+def df_reindexer(df, timesteps, min_periods):
+    df = df.rolling('D', min_periods=min_periods).mean()
+    new_idx = pd.date_range(start=df.index.min().tz_localize(None), end=pd.Timestamp('now'), freq=timesteps, tz='UTC')
+    df.index = pd.DatetimeIndex(df.index)
+    reindexed_signal = df.reindex(new_idx)
+
+    return reindexed_signal
+
+def index_of_last_good_delta(df, delta_value):
+    ### Calculates diff and returns index value for most recent stable value ###
+
+    orig_df = df
+
+    if len(df) >= 2:
+        df['delta'] = df[df.columns[0]].diff()
+        df.delta = np.abs(df.delta.values)
+        df = df[df.delta >= delta_value].tail(1)
+
+    else:
+        df = df[df.delta > delta_value].head(1)
+
+    # return the last index value where jump > delta value
+    return pd.Timestamp(df.index.values[0]) if len(df) > 0 else pd.Timestamp(orig_df.index.values[0])
+
+def simple_ols(df, pred_for_days, mnumber):
+    from sklearn.linear_model import LinearRegression
+
+     # Initialize random number generator
+    np.random.seed(123)
+
+    # hold original df
+    orig_df = df
+
+    #df = df.fillna(method='ffill')
+    df = df.dropna()
+
+    # prep dataset
+    df = df.reset_index()
+    df.columns = ['x', 'y']
+    df.x = df.x.values.astype(np.int64)
+
+    # scale predictors
+    scaler = StandardScaler() #MinMaxScaler(feature_range=(0, 1))
+    df.x = scaler.fit_transform(df.x.values.reshape(-1, 1))
+
+    # Predictor variables
+    X = df.x.values.reshape(-1,1)
+
+    # outcome/target variable
+    y = df.y
+
+    lin_reg = LinearRegression()
+    lin_reg.fit(X, y)
+    slope = lin_reg.coef_
+    intercept = lin_reg.intercept_
+
+     # create future df
+    pred_for_days = pred_for_days
+    future_df = pd.DataFrame(
+        index=pd.date_range(start=orig_df.index.min(), end=(orig_df.index.max() + pd.Timedelta(days=pred_for_days)),
+                            freq='D'))
+
+    # prep dataset
+    future_df['x'] = future_df.index.values.astype(np.int64)
+
+    # scale predictors and create hpd values
+    future_df['x'] = scaler.transform(future_df['x'].values.reshape(-1, 1))
+
+    future_df['y_pred'] = intercept + slope * future_df['x']
+    #future_df['y_pred_lower'] = pm.hpd(trace)['alpha'][0] + pm.hpd(trace)['beta'][0] * future_df['x']
+    #future_df['y_pred_upper'] = pm.hpd(trace)['alpha'][1] + pm.hpd(trace)['beta'][1] * future_df['x']
+    #future_df = future_df[['y_pred_lower', 'y_pred', 'y_pred_upper']]
+    final_df = future_df[['y_pred']]
+
+    return slope[0], final_df #orig_df.append(future_df, ignore_index=False)
+
