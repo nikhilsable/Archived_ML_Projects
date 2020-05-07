@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/My-ML-and-DataSci-Projects.iml" filepath="$PROJECT_DIR$/.idea/My-ML-and-DataSci-Projects.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../handson-ml2/.idea/handson-ml2.iml" filepath="$PROJECT_DIR$/../handson-ml2/.idea/handson-ml2.iml" />
     </modules>
   </component>
 </project>
