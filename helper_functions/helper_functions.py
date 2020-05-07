@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.io as pio
-import plotly as py
-import pymc3 as pm
+#import pymc3 as pm
+from sklearn.preprocessing import StandardScaler
 
 
 file_path = join(current_dir, "./dummy_data.csv")
@@ -166,13 +166,11 @@ get_plotly_fig_ts_data(final_df, upper_error_limit, upper_warning_limit, image_f
 
 #get_plotly_fig_ts_data(final_df, lower_error_limit, lower_warning_limit, upper_error_limit, upper_warning_limit, image_filename, chart_title)
 
-def bay_lin_reg_pymc(df, pred_for_days, mnumber):
+def bay_lin_reg_pymc(df, pred_for_days):
     # ** Takes in a univariate dataframe (x=predictor, y=target) + prediction for days variable
     #   and performs Bayesian Linear Regression analysis on it.
     #   Auto imputes missing data and returns a trace (draws from posterior dist)
     #   and a final_df, which contians lower, upper bounds along wiht y_pred
-
-    #logging.info("Beginning Bayesian Linear Regression for {}...".format(mnumber))
 
     # Initialize random number generator
     np.random.seed(123)
@@ -188,7 +186,7 @@ def bay_lin_reg_pymc(df, pred_for_days, mnumber):
     df.x = df.x.values.astype(np.int64)
 
     # scale predictors
-    scaler = StandardScaler() #MinMaxScaler(feature_range=(0, 1))
+    scaler = StandardScaler()
     df.x = scaler.fit_transform(df.x.values.reshape(-1, 1))
 
     # Predictor variables
@@ -226,8 +224,6 @@ def bay_lin_reg_pymc(df, pred_for_days, mnumber):
                             freq=orig_df.index.inferred_freq))
 
     # prep dataset
-    #future_df = future_df.reset_index()
-    #future_df.columns = ['x']
     future_df['x'] = future_df.index.values.astype(np.int64)
 
     # scale predictors and create hpd values
@@ -236,9 +232,7 @@ def bay_lin_reg_pymc(df, pred_for_days, mnumber):
     future_df['y_pred'] = trace['alpha'].mean() + trace['beta'].mean() * future_df['x']
     future_df['y_pred_lower'] = pm.hpd(trace)['alpha'][0] + pm.hpd(trace)['beta'][0] * future_df['x']
     future_df['y_pred_upper'] = pm.hpd(trace)['alpha'][1] + pm.hpd(trace)['beta'][1] * future_df['x']
-    future_df = future_df[['y_pred_lower', 'y_pred', 'y_pred_upper']]
-
-    final_df = future_df #orig_df.append(future_df, ignore_index=False)
+    final_df = future_df[['y_pred_lower', 'y_pred', 'y_pred_upper']]
 
     return trace, final_df
 
@@ -311,10 +305,7 @@ def simple_ols(df, pred_for_days, mnumber):
     future_df['x'] = scaler.transform(future_df['x'].values.reshape(-1, 1))
 
     future_df['y_pred'] = intercept + slope * future_df['x']
-    #future_df['y_pred_lower'] = pm.hpd(trace)['alpha'][0] + pm.hpd(trace)['beta'][0] * future_df['x']
-    #future_df['y_pred_upper'] = pm.hpd(trace)['alpha'][1] + pm.hpd(trace)['beta'][1] * future_df['x']
-    #future_df = future_df[['y_pred_lower', 'y_pred', 'y_pred_upper']]
     final_df = future_df[['y_pred']]
 
-    return slope[0], final_df #orig_df.append(future_df, ignore_index=False)
+    return slope[0], final_df
 
