@@ -61,8 +61,8 @@ def plot_multiple_forecasts(X, Y, Y_pred):
     ahead = Y.shape[1]
     plot_series(X[0, :, 0])
     plt.plot(np.arange(n_steps, n_steps + ahead), Y[0, :, 0], "ro-", label="Actual")
-    plt.plot(np.arange(n_steps, n_steps + ahead), Y_pred[0, :, 0], "bx-", label="Forecast", markersize=10)
-    plt.axis([0, n_steps + ahead, -1, 1])
+    plt.plot(np.arange(n_steps, n_steps + ahead), Y_pred[0, :, 0], "bx-", label="Forecast")
+    #plt.axis([0, n_steps + ahead, -1, 1])
     plt.legend(fontsize=14)
 
 def plot_series(series, y=None, y_pred=None, x_label="$t$", y_label="$x(t)$"):
@@ -101,12 +101,12 @@ df = pd.read_csv('data_sources/yr_sensor_data_test.csv', index_col='time')
 #series = generate_time_series(10000, n_steps + lookforward)
 batch_size, series= chop_time_series(df,n_steps+lookforward)
 
-X_train = series[:49, :n_steps]
-y_train = series[:49, -lookforward]
-X_valid = series[50:51, :n_steps]
-y_valid = series[50:51, -lookforward]
-X_test = series[51:, :n_steps]
-y_test = series[51:, -lookforward]
+X_train = series[:48, :n_steps]
+y_train = series[:48, -lookforward]
+X_valid = series[49:50, :n_steps]
+y_valid = series[49:50, -lookforward]
+X_test = series[50:, :n_steps]
+y_test = series[50:, -lookforward]
 
 # %%
 print ('Training Data X Shape : ' + str(X_train.shape))
@@ -181,7 +181,25 @@ save_fig("deep_rnn_1_step_pred_plot")
 plt.show()
 
 
-mmm
+'''Multi step predictions using RNNs'''
+
+np.random.seed(43) # not 42, as it would give the first series in the train set
+
+batch_size, series = chop_time_series(df, n_steps + lookforward)
+
+X_new, Y_new = series[:, :n_steps], series[:, n_steps:]
+X = X_new
+for step_ahead in range(lookforward):
+    y_pred_one = model.predict(X[:, step_ahead:])[:, np.newaxis, :]
+    X = np.concatenate([X, y_pred_one], axis=1)
+
+Y_pred = X[:, n_steps:]
+
+plot_multiple_forecasts(X_new, Y_new, Y_pred)
+save_fig("rnn_multi_step_forecast_ahead_plot")
+plt.show()
+
+mm
 
 #Simple LSTM
 np.random.seed(42)
