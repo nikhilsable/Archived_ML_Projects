@@ -89,6 +89,13 @@ def plot_learning_curves(loss, val_loss):
     plt.ylabel("Loss")
     plt.grid(True)
 
+def df_reindexer(df, timesteps='H'):
+    new_idx = pd.date_range(start=df.index.min().tz_localize(None), end=df.index.max().tz_localize(None), freq=timesteps, tz='UTC')
+    df_reindexed = pd.DataFrame(index=new_idx)
+    df_reindexed = df.join(df_reindexed, how='outer')
+
+    return df_reindexed
+
 # %%
 np.random.seed(42)
 
@@ -97,6 +104,14 @@ n_steps = 50
 
 
 df = pd.read_csv('data_sources/yr_sensor_data_test.csv', index_col='time')
+df.index = pd.to_datetime(df.index.values)
+
+#Reindex to identify missing values
+df = df_reindexer(df, timesteps='H')
+
+#handle missing values
+#df = df.ffill()
+df = df.fillna(-1)
 
 #series = generate_time_series(10000, n_steps + lookforward)
 batch_size, series= chop_time_series(df,n_steps+lookforward)
