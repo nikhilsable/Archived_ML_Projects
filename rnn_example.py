@@ -110,18 +110,28 @@ df.index = pd.to_datetime(df.index.values)
 df = df_reindexer(df, timesteps='H')
 
 #handle missing values
-#df = df.ffill()
-df = df.fillna(-1)
+df = df.ffill()
 
 #series = generate_time_series(10000, n_steps + lookforward)
 batch_size, series= chop_time_series(df,n_steps+lookforward)
 
-X_train = series[:48, :n_steps]
-y_train = series[:48, -lookforward]
-X_valid = series[49:50, :n_steps]
-y_valid = series[49:50, -lookforward]
-X_test = series[50:, :n_steps]
-y_test = series[50:, -lookforward]
+train_split = int(0.90*batch_size)
+valid_split = int(0.05*batch_size)
+test_split= int(0.05*batch_size)
+
+# X_train = series[:48, :n_steps]
+# y_train = series[:48, -lookforward]
+# X_valid = series[49:50, :n_steps]
+# y_valid = series[49:50, -lookforward]
+# X_test = series[50:, :n_steps]
+# y_test = series[50:, -lookforward]
+
+X_train = series[:100, :n_steps]
+y_train = series[:100, -lookforward]
+X_valid = series[101:103, :n_steps]
+y_valid = series[101:103, -lookforward]
+X_test = series[103:, :n_steps]
+y_test = series[103:, -lookforward]
 
 # %%
 print ('Training Data X Shape : ' + str(X_train.shape))
