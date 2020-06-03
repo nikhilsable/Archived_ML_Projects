@@ -224,6 +224,44 @@ plot_multiple_forecasts(X_new, Y_new, Y_pred)
 save_fig("rnn_multi_step_forecast_ahead_plot")
 plt.show()
 
+'''Now let's create an RNN that predicts the next 10 steps at each time step. 
+That is, instead of just forecasting time steps 50 to 59 based on 
+time steps 0 to 49, it will forecast time steps 1 to 10 at time step 0, then 
+time steps 2 to 11 at time step 1, and so on, and finally it will forecast
+ time steps 50 to 59 at the last time step. Notice that the model is 
+ causal: when it makes predictions at any time step, it can only see past time steps.'''
+
+np.random.seed(42)
+
+batch_size, series= chop_time_series(df,n_steps+lookforward)
+
+X_train = series[:100, :n_steps]
+Y_train = series[:100]
+X_valid = series[101:103, :n_steps]
+Y_valid = series[101:103]
+X_test = series[103:, :n_steps]
+Y_test = series[103:]
+Y = np.empty((batch_size, n_steps, lookforward))
+for step_ahead in range (1, lookforward+1):
+    Y[..., step_ahead - 1] = series[..., step_ahead:step_ahead + n_steps, 0]
+
+X_train.shape, Y_train.shape
+
+np.random.seed(42)
+tf.random.set_seed(42)
+
+model = keras.models.Sequential([
+    keras.layers.SimpleRNN(20, return_sequences=True, input_shape=[None, 1]),
+    keras.layers.SimpleRNN(20, return_sequences=True),
+    keras.layers.TimeDistributed(keras.layers.Dense(10)) ])
+
+def last_time_step_mse(Y_true, Y_pred):
+    return keras.metrics.mean_squared_error(Y_true[:, -1], Y_pred[:, -1])
+
+model.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.01), metrics=[last_time_step_mse])
+history = model.fit(X_train, Y_train, epochs=20,
+                    validation_data=(X_valid, Y_valid))
+
 mm
 
 #Simple LSTM
