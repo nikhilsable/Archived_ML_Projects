@@ -6,6 +6,8 @@ import sklearn
 assert sklearn.__version__ >= "0.20"
 from sklearn.cluster import KMeans
 import seaborn as sns
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 # TensorFlow ≥2.0 is required
 import tensorflow as tf
@@ -29,7 +31,7 @@ mpl.rc('ytick', labelsize=12)
 
 # Where to save the figures
 PROJECT_ROOT_DIR = "."
-CHAPTER_ID = "rnn"
+CHAPTER_ID = "anomaly_detection_clustering"
 IMAGES_PATH = os.path.join(PROJECT_ROOT_DIR, "images", CHAPTER_ID)
 os.makedirs(IMAGES_PATH, exist_ok=True)
 
@@ -40,8 +42,8 @@ def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
         plt.tight_layout()
     plt.savefig(path, format=fig_extension, dpi=resolution)
 
-
-df = pd.read_csv('data_sources/raw_pp_seed_data_9739_outlier_analysis.csv', index_col='time')
+filename = r'data_sources/raw_pp_seed_data_9739_outlier_analysis.csv'
+df = pd.read_csv(filename, index_col='time')
 df.index = pd.to_datetime(df.index.values)
 
 #Reindex to identify missing values
@@ -64,36 +66,55 @@ df.pk2pk_3sig = df[df.pk2pk_3sig <= 25]
 
 df = df.dropna()
 
+#setup lookback period (in days)
+lookback = 180
+df = df.loc[(df.index.max()-pd.Timedelta(days=lookback)):df.index.max()]
+
 #intro plots
-sns.pairplot(df)
+#sns.pairplot(df)
+
+#prep data for algo
+raw_X = df.iloc[:, :-1].values
+
+num_pipeline = Pipeline([
+        ('std_scaler', StandardScaler()),
+    ])
+
+df_num_tr = num_pipeline.fit_transform(raw_X)
 
 #Setup training data
-X = df.iloc[:, :-1].values
+X = df_num_tr[:, :-1]
 y = df.iloc[:, -1].values
 
-k = 2
+
+#Setup for K-means clustering
+no_of_clusters = 2
+k = no_of_clusters
 kmeans = KMeans(n_clusters=k, random_state=42)
 y_pred = kmeans.fit_predict(X)
 
 #cluster centers
-kmeans.cluster_centers_
+print("cluster centers = " + str(kmeans.cluster_centers_))
 
 #index of the cluster that instance gets assigned to
-kmeans.labels_
+print("cluster labels = " + str(kmeans.labels_))
 
 df = df.reset_index()
 df['cluster'] = pd.Series(y_pred)
 df = df.set_index('index')
 
-sns.pairplot(df, hue='cluster')
+total_plot = sns.pairplot(df, hue='cluster')
+total_plot.fig.suptitle(("Lookback : " + str(lookback) + " --> "+ filename), fontsize=14, y=1.08)
+save_fig("pairplot")
 
-df.cluster.plot(style='8', figsize=(18,13))
-plt.show()
+df[['cluster']].plot(alpha=0.2, style='8', figsize = (18,13), title=("Lookback : " + str(lookback) + " --> " + "Clusters : " + filename))
+save_fig("cluster_over_time")
+#df.cluster.plot(style='8', figsize=(18,13), title = "Clusters")
 
-df.pk2pk_oos.plot(style='8', figsize=(18,13))
-plt.show()
+#df.pk2pk_oos.plot(style='8', figsize=(18,13))
+#plt.show()
 
-df.pzt.plot(style='8', figsize=(18,13))
-plt.show()
+#df.pzt.plot(style='8', figsize=(18,13))
+#plt.show()
 
-sns.pairplot(df[['cluster', 'pzt']], hue='cluster', ).figsize=(18,13)
+#sns.pairplot(df[['cluster', 'pzt']], hue='cluster', ).figsize=(18,13)
