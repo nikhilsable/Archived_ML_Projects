@@ -112,15 +112,15 @@ print(cross_val_score(ovr_clf, X_train_scaled, y_train, cv=3, scoring="accuracy"
 
 # Accuracy score on testing data
 print("Testing Accuracy Score with One v/s Rest Classifier.....")
-print(cross_val_score(ovr_clf, X_test_scaled, y_train, cv=3, scoring="accuracy"))
+print(cross_val_score(ovr_clf, X_test_scaled, y_test, cv=3, scoring="accuracy"))
 
-# Make a prediction
+# Make one prediction
 print("Actual Target = " + str(y[-1]) + " and Predicted Value = " + str(ovr_clf.predict([scaler.transform([test_digit]).flatten()]).ravel()))
 
 # total estimators
 len(ovr_clf.estimators_)
 
-# Check which class it was most confident of (and whether it was ambigious to guess)
+# Check which class it was most confident of
 ovr_clf.decision_function([scaler.transform([test_digit]).flatten()])
 
 # Create and Plot confusion Matrix
