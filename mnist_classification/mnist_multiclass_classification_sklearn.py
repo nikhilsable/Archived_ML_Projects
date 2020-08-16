@@ -63,9 +63,9 @@ def plot_multiclass_roc(clf, X_test, y_test, n_classes, figsize=(17, 6)):
     ax.set_ylim([0.0, 1.05])
     ax.set_xlabel('False Positive Rate')
     ax.set_ylabel('True Positive Rate')
-    ax.set_title('Receiver operating characteristic example')
+    ax.set_title('Receiver Operating Characteristic per class')
     for i in range(n_classes):
-        ax.plot(fpr[i], tpr[i], label='ROC curve (area = %0.2f) for label %i' % (roc_auc[i], i))
+        ax.plot(fpr[i], tpr[i], label='ROC curve (area = %0.4f) for label %i' % (roc_auc[i], i))
     ax.legend(loc="best")
     ax.grid(alpha=.4)
     sns.despine()
@@ -115,6 +115,7 @@ print("Testing Accuracy Score with One v/s Rest Classifier.....")
 print(cross_val_score(ovr_clf, X_test_scaled, y_test, cv=3, scoring="accuracy"))
 
 # Make one prediction
+print("Making one prediction to test....")
 print("Actual Target = " + str(y[-1]) + " and Predicted Value = " + str(ovr_clf.predict([scaler.transform([test_digit]).flatten()]).ravel()))
 
 # total estimators
@@ -134,3 +135,5 @@ plt.show()
 
 # Plot Multiclass ROC (a ROC plot for each estimator/class)
 plot_multiclass_roc(ovr_clf, X_train_scaled, y_train, n_classes=len(ovr_clf.estimators_), figsize=(16, 10))
+save_fig("ROC_plot_per_class", tight_layout=False)
+plt.show()
