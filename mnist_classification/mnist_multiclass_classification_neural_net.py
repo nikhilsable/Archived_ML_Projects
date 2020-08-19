@@ -11,6 +11,7 @@ import pandas as pd
 
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from sklearn.preprocessing import StandardScaler
 
 import seaborn as sns
 
@@ -72,35 +73,27 @@ def plot_multiclass_roc(clf, X_test, y_test, n_classes, figsize=(17, 6)):
     sns.despine()
     plt.show()
 
+
 # Get Dataset
 mnist = keras.datasets.mnist
-
-# test_digit
-test_digit = X[-1]
-test_digit_target = y[-1]
-
-# Changing data type for target from string to int
-y = y.astype('int64')
 
 # Splitting into train test sets
 (X_train_full, y_train_full), (X_test, y_test) = mnist.load_data()
 
-# scaling features
-from sklearn.preprocessing import StandardScaler
-scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train.astype(np.float64))
-X_test_scaled = scaler.transform(X_test.astype(np.float64))
+# test_digit
+test_digit = X_train_full[-1]
+test_digit_target = y_train_full[-1]
 
-# One v/s rest classification from Sklearn
-from sklearn.multiclass import OneVsRestClassifier
-from sklearn.svm import SVC
-ovr_clf = OneVsRestClassifier(SVC(gamma="auto", random_state=42))
-ovr_clf.fit(X_train_scaled, y_train)
-#ovr_clf.predict(y_test)
+# scaling features
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train_full.flatten().astype(np.float64).reshape(-1, 1))
+X_test_scaled = scaler.transform(X_test.flatten().astype(np.float64).reshape(-1, 1))
+
+# Build Neural Net
+
+# Compile Neural Net
 
 # Accuracy score on training data
-from sklearn.model_selection import cross_val_score, cross_val_predict
-from sklearn.metrics import confusion_matrix
 
 print("Training Accuracy Score with One v/s Rest Classifier.....")
 print(cross_val_score(ovr_clf, X_train_scaled, y_train, cv=3, scoring="accuracy"))
