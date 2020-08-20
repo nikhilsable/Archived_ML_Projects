@@ -87,7 +87,7 @@ test_digit_target = y_train_full[-1]
 # scaling features
 scaler = StandardScaler()
 
-X_valid, X_train = X_train_full[:5000], X_train_full[5000:]
+X_valid, X_train = X_train_full[:5000]/255.0, X_train_full[5000:]/255.0
 y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
 
 # X_train_scaled = scaler.fit_transform(X_train.flatten().astype(np.float64).reshape(-1, 1))
@@ -124,8 +124,6 @@ print(cross_val_score(ovr_clf, X_train_scaled, y_train, cv=3, scoring="accuracy"
 # Accuracy score on testing data
 print("Testing Accuracy Score with One v/s Rest Classifier.....")
 print(cross_val_score(ovr_clf, X_test_scaled, y_test, cv=3, scoring="accuracy"))
-
-# Make one prediction
 print("Making one prediction to test....")
 print("Actual Target = " + str(y[-1]) + " and Predicted Value = " + str(ovr_clf.predict([scaler.transform([test_digit]).flatten()]).ravel()))
 
