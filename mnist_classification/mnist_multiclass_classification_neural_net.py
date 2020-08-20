@@ -87,7 +87,12 @@ test_digit_target = y_test[-1:]
 # scaling features
 scaler = StandardScaler()
 
-X_valid, X_train = X_train_full[:5000]/255.0, X_train_full[5000:]/255.0
+# Scaling if using a "SGD" optimizer
+# I noticed the model performs as good, if not better without scaling
+# but with "adam" optimizer
+# X_valid, X_train = X_train_full[:5000]/255.0, X_train_full[5000:]/255.0
+
+X_valid, X_train = X_train_full[:5000], X_train_full[5000:]
 y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
 
 # X_train_scaled = scaler.fit_transform(X_train.flatten().astype(np.float64).reshape(-1, 1))
@@ -103,7 +108,7 @@ model.add(keras.layers.Dense(100, activation='relu'))
 model.add(keras.layers.Dense(len(np.unique(y_train_full.flatten())), activation='softmax')) #unique classes in target
 
 # Compile Neural Net
-model.compile(loss='sparse_categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
 
 # fit/train the model
 history = model.fit(X_train, y_train, epochs = 30, validation_data =(X_valid, y_valid))
