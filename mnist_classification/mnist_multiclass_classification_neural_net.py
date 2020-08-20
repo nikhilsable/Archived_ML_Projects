@@ -103,8 +103,9 @@ y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
 model = keras.models.Sequential()
 model.add(keras.layers.Flatten(input_shape=[X_train_full.shape[1], X_train_full.shape[2]]))
 model.add(keras.layers.Dense(300, activation='relu'))
+model.add(keras.layers.Dropout(rate=0.2))
 model.add(keras.layers.Dense(100, activation='relu'))
-#model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dropout(rate=0.2))
 model.add(keras.layers.Dense(len(np.unique(y_train_full.flatten())), activation='softmax')) #unique classes in target
 
 # Compile Neural Net
@@ -126,6 +127,7 @@ history_df = pd.DataFrame(history.history)
 history_df.plot(figsize=(8, 5))
 plt.grid(True)
 plt.gca().set_ylim(0, 1)
+save_fig("train_history_accuracy_loss_plot_ann_mnist", tight_layout=False)
 plt.show()
 
 print("Making one prediction to test....")
