@@ -108,10 +108,18 @@ model.add(keras.layers.Dense(100, activation='relu'))
 model.add(keras.layers.Dense(len(np.unique(y_train_full.flatten())), activation='softmax')) #unique classes in target
 
 # Compile Neural Net
-model.compile(loss='sparse_categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+model.compile(loss='sparse_categorical_crossentropy', optimizer='nadam', metrics=['accuracy'])
+
+# Set Callbacks
+checkpoint_cb = keras.callbacks.ModelCheckpoint("mnist_ann_classification_model.h5", save_best_only=True)
+early_stopping_cb = keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
 
 # fit/train the model
-history = model.fit(X_train, y_train, epochs = 30, validation_data =(X_valid, y_valid))
+history = model.fit(X_train, y_train, epochs=50, validation_data=(X_valid, y_valid),
+                    callbacks=[checkpoint_cb, early_stopping_cb])
+
+model = keras.models.load_model("mnist_ann_classification_model.h5") # rollback to best model
+mse_test = model.evaluate(X_test, y_test)
 
 # Did the model learn / how well did it learn
 history_df = pd.DataFrame(history.history)
