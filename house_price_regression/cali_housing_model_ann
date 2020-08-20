@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from sklearn.datasets import fetch_california_housing
 from sklearn.model_selection import train_test_split
@@ -20,17 +21,41 @@ X_train = scaler.fit_transform(X_train)
 X_valid = scaler.transform(X_valid)
 X_test = scaler.transform(X_test)
 
-model = keras.models.Sequential([
-    keras.layers.Dense(30, activation="relu", input_shape=X_train.shape[1:]),
-    keras.layers.Dense(1)
-])
-model.compile(loss="mean_squared_error", optimizer=keras.optimizers.SGD(lr=1e-3))
-history = model.fit(X_train, y_train, epochs=20, validation_data=(X_valid, y_valid))
+# model = keras.models.Sequential([
+#     keras.layers.Dense(30, activation="relu", input_shape=X_train.shape[1:]),
+#     keras.layers.Dense(1)
+# ])
+
+model = keras.models.Sequential()
+model.add(keras.layers.Flatten(input_shape=X_train.shape[1:]))
+model.add(keras.layers.Dense(300, activation='relu'))
+model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dense(100, activation='relu'))
+model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dense(1)) #unique classes in target
+
+model.compile(loss="mean_squared_error", optimizer='nadam')
+
+# Set Callbacks
+checkpoint_cb = keras.callbacks.ModelCheckpoint("cali_house_price_ann_regression_model.h5", save_best_only=True)
+early_stopping_cb = keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
+
+# fit/train the model
+history = model.fit(X_train, y_train, epochs=50, validation_data=(X_valid, y_valid),
+                    callbacks=[checkpoint_cb, early_stopping_cb])
+
+model = keras.models.load_model("cali_house_price_ann_regression_model.h5")
+
 mse_test = model.evaluate(X_test, y_test)
+
+print("Model MSE = " + str(mse_test))
+
 X_new = X_test[:3]
 y_pred = model.predict(X_new)
 
 plt.plot(pd.DataFrame(history.history))
+history_df = pd.DataFrame(history.history)
+history_df.plot(figsize=(8, 5))
 plt.grid(True)
 plt.gca().set_ylim(0, 1)
 plt.show()
