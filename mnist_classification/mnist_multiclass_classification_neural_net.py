@@ -81,8 +81,8 @@ mnist = keras.datasets.mnist
 (X_train_full, y_train_full), (X_test, y_test) = mnist.load_data()
 
 # test_digit
-test_digit = X_train_full[-1]
-test_digit_target = y_train_full[-1]
+test_digit = X_test[-1:]
+test_digit_target = y_test[-1:]
 
 # scaling features
 scaler = StandardScaler()
@@ -115,34 +115,25 @@ plt.grid(True)
 plt.gca().set_ylim(0, 1)
 plt.show()
 
-
-# Accuracy score on training data
-
-print("Training Accuracy Score with One v/s Rest Classifier.....")
-print(cross_val_score(ovr_clf, X_train_scaled, y_train, cv=3, scoring="accuracy"))
-
-# Accuracy score on testing data
-print("Testing Accuracy Score with One v/s Rest Classifier.....")
-print(cross_val_score(ovr_clf, X_test_scaled, y_test, cv=3, scoring="accuracy"))
 print("Making one prediction to test....")
-print("Actual Target = " + str(y[-1]) + " and Predicted Value = " + str(ovr_clf.predict([scaler.transform([test_digit]).flatten()]).ravel()))
+print("Actual Target = " + str(test_digit_target) + " and Predicted Value = " + str(model.predict_classes(test_digit)))
 
-# total estimators
-len(ovr_clf.estimators_)
+# Predict probabilities per class
+print("Predicting probability per class for one example...")
+print("Actual Target = " + str(test_digit_target) + " and Predicted Value = " + str(model.predict(test_digit)))
 
-# Check which class it was most confident of
-ovr_clf.decision_function([scaler.transform([test_digit]).flatten()])
+y_train_pred = model.predict_classes(X_train)
 
 # Create and Plot confusion Matrix
-y_train_pred = cross_val_predict(ovr_clf, X_train_scaled, y_train, cv=3)
+from sklearn.metrics import confusion_matrix
 conf_mx = confusion_matrix(y_train, y_train_pred)
 conf_mx
 
 plt.matshow(conf_mx, cmap=plt.cm.gray)
-save_fig("confusion_matrix_plot_with_ovr_classifier", tight_layout=False)
+save_fig("confusion_matrix_plot_with_ANN", tight_layout=False)
 plt.show()
 
 # Plot Multiclass ROC (a ROC plot for each estimator/class)
-plot_multiclass_roc(ovr_clf, X_train_scaled, y_train, n_classes=len(ovr_clf.estimators_), figsize=(16, 10))
-save_fig("ROC_plot_per_class", tight_layout=False)
-plt.show()
+# plot_multiclass_roc(ovr_clf, X_train_scaled, y_train, n_classes=len(ovr_clf.estimators_), figsize=(16, 10))
+# save_fig("ROC_plot_per_class", tight_layout=False)
+# plt.show()
