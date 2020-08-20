@@ -86,12 +86,35 @@ test_digit_target = y_train_full[-1]
 
 # scaling features
 scaler = StandardScaler()
-X_train_scaled = scaler.fit_transform(X_train_full.flatten().astype(np.float64).reshape(-1, 1))
-X_test_scaled = scaler.transform(X_test.flatten().astype(np.float64).reshape(-1, 1))
+
+X_valid, X_train = X_train_full[:5000], X_train_full[5000:]
+y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
+
+# X_train_scaled = scaler.fit_transform(X_train.flatten().astype(np.float64).reshape(-1, 1))
+# X_valid_scaled = scaler.fit_transform(X_valid.flatten().astype(np.float64).reshape(-1, 1))
+# X_test_scaled = scaler.transform(X_test.flatten().astype(np.float64).reshape(-1, 1))
 
 # Build Neural Net
+model = keras.models.Sequential()
+model.add(keras.layers.Flatten(input_shape=[X_train_full.shape[1], X_train_full.shape[2]]))
+model.add(keras.layers.Dense(300, activation='relu'))
+model.add(keras.layers.Dense(100, activation='relu'))
+#model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dense(len(np.unique(y_train_full.flatten())), activation='softmax')) #unique classes in target
 
 # Compile Neural Net
+model.compile(loss='sparse_categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+
+# fit/train the model
+history = model.fit(X_train, y_train, epochs = 30, validation_data =(X_valid, y_valid))
+
+# Did the model learn / how well did it learn
+history_df = pd.DataFrame(history.history)
+history_df.plot(figsize=(8, 5))
+plt.grid(True)
+plt.gca().set_ylim(0, 1)
+plt.show()
+
 
 # Accuracy score on training data
 
