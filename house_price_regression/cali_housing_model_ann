@@ -1,0 +1,78 @@
+import os
+
+import tensorflow as tf
+from tensorflow import keras
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
+
+from sklearn.datasets import fetch_california_housing
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+np.random.seed(42)
+tf.random.set_seed(42)
+
+mpl.rc('axes', labelsize=14)
+mpl.rc('xtick', labelsize=12)
+mpl.rc('ytick', labelsize=12)
+
+# Where to save the figures
+PROJECT_ROOT_DIR = "."
+CHAPTER_ID = "regression_neural_net"
+IMAGES_PATH = os.path.join(PROJECT_ROOT_DIR, "images", CHAPTER_ID)
+os.makedirs(IMAGES_PATH, exist_ok=True)
+
+
+def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
+    path = os.path.join(IMAGES_PATH, fig_id + "." + fig_extension)
+    print("Saving figure", fig_id)
+    if tight_layout:
+        plt.tight_layout()
+    plt.savefig(path, format=fig_extension, dpi=resolution)
+
+
+housing = fetch_california_housing()
+
+X_train_full, X_test, y_train_full, y_test = train_test_split(housing.data, housing.target, random_state=42)
+X_train, X_valid, y_train, y_valid = train_test_split(X_train_full, y_train_full, random_state=42)
+
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_valid = scaler.transform(X_valid)
+X_test = scaler.transform(X_test)
+
+
+model = keras.models.Sequential()
+model.add(keras.layers.Flatten(input_shape=X_train.shape[1:]))
+model.add(keras.layers.Dense(300, activation='relu'))
+model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dense(100, activation='relu'))
+model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dense(1))
+
+
+model.compile(loss="mean_squared_error", optimizer='nadam')
+
+# Set Callbacks
+checkpoint_cb = keras.callbacks.ModelCheckpoint("cali_house_price_ann_regression_model.h5", save_best_only=True)
+early_stopping_cb = keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
+
+# fit/train the model
+history = model.fit(X_train, y_train, epochs=50, validation_data=(X_valid, y_valid),
+                    callbacks=[checkpoint_cb, early_stopping_cb])
+
+model = keras.models.load_model("cali_house_price_ann_regression_model.h5")
+
+mse_test = model.evaluate(X_test, y_test)
+
+print("Model RMSE = " + str(np.sqrt(mse_test)))
+
+X_new = X_test[:3]
+y_pred = model.predict(X_new)
+
+#plt.plot(pd.DataFrame(history.history))
+history_df = pd.DataFrame(history.history)
+history_df.plot(figsize=(8, 5))
+save_fig("train_history_loss_plot_ann_cali_house_prices_regression", tight_layout=False)

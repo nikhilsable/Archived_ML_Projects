@@ -86,7 +86,12 @@ test_digit_target = y_test[-1:]
 # scaling features
 scaler = StandardScaler()
 
-X_valid, X_train = X_train_full[:5000]/255.0, X_train_full[5000:]/255.0
+# Scaling if using a "SGD" optimizer
+# I noticed the model performs as good, if not better without scaling
+# but with "adam" optimizer
+# X_valid, X_train = X_train_full[:5000]/255.0, X_train_full[5000:]/255.0
+
+X_valid, X_train = X_train_full[:5000], X_train_full[5000:]
 y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
 
 # X_train_scaled = scaler.fit_transform(X_train.flatten().astype(np.float64).reshape(-1, 1))
@@ -97,21 +102,31 @@ y_valid, y_train = y_train_full[:5000], y_train_full[5000:]
 model = keras.models.Sequential()
 model.add(keras.layers.Flatten(input_shape=[X_train_full.shape[1], X_train_full.shape[2]]))
 model.add(keras.layers.Dense(300, activation='relu'))
+model.add(keras.layers.Dropout(rate=0.2))
 model.add(keras.layers.Dense(100, activation='relu'))
-#model.add(keras.layers.Dropout(rate=0.2))
+model.add(keras.layers.Dropout(rate=0.2))
 model.add(keras.layers.Dense(len(np.unique(y_train_full.flatten())), activation='softmax')) #unique classes in target
 
 # Compile Neural Net
-model.compile(loss='sparse_categorical_crossentropy', optimizer='sgd', metrics=['accuracy'])
+model.compile(loss='sparse_categorical_crossentropy', optimizer='nadam', metrics=['accuracy'])
+
+# Set Callbacks
+checkpoint_cb = keras.callbacks.ModelCheckpoint("mnist_ann_classification_model.h5", save_best_only=True)
+early_stopping_cb = keras.callbacks.EarlyStopping(patience=5, restore_best_weights=True)
 
 # fit/train the model
-history = model.fit(X_train, y_train, epochs = 30, validation_data =(X_valid, y_valid))
+history = model.fit(X_train, y_train, epochs=50, validation_data=(X_valid, y_valid),
+                    callbacks=[checkpoint_cb, early_stopping_cb])
+
+model = keras.models.load_model("mnist_ann_classification_model.h5") # rollback to best model
+mse_test = model.evaluate(X_test, y_test)
 
 # Did the model learn / how well did it learn
 history_df = pd.DataFrame(history.history)
 history_df.plot(figsize=(8, 5))
 plt.grid(True)
 plt.gca().set_ylim(0, 1)
+save_fig("train_history_accuracy_loss_plot_ann_mnist", tight_layout=False)
 plt.show()
 
 print("Making one prediction to test....")
