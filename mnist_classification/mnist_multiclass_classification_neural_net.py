@@ -73,7 +73,6 @@ def plot_multiclass_roc(clf, X_test, y_test, n_classes, figsize=(17, 6)):
     sns.despine()
     plt.show()
 
-
 # Get Dataset
 mnist = keras.datasets.mnist
 
