@@ -20,7 +20,6 @@ def get_metric_dropdown_options(cdl_df):
     return dict_list
 
 # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-# assets_path = r"C:\Users\nsable\Documents\versionControl\USD2SD_PROJECT_GitRepo\experiments\assets"
 
 #Setup App
 app = dash.Dash(__name__)#, external_stylesheets=external_stylesheets
@@ -39,10 +38,7 @@ def update_timeseries(cdl_df):
     for machine in df_sub.columns[-1:]:
         trace.append(go.Bar(x=df_sub.loc[:, machine].index,
                                  y=df_sub.loc[:, 'days_since_latest_run'],
-                                 # mode='markers',
-                                 # opacity=0.7,
                                  name=machine))
-                                 # textposition='bottom center'))
     # STEP 3
     traces = [trace]
     data = [val for sublist in traces for val in sublist]
@@ -54,9 +50,6 @@ def update_timeseries(cdl_df):
                   template='plotly_dark',
                   paper_bgcolor='rgba(0, 0, 0, 0)',
                   plot_bgcolor='rgba(0, 0, 0, 0)',
-                  # margin={'b': 15},
-                  # hovermode='x',
-                  # autosize=True,
                   title={'text': 'Time Since Model Run (Days)', 'font': {'color': 'white'}, 'x': 0.5, 'font_size':25},
                   yaxis={'range': [0, df_sub.days_since_latest_run.max()], 'showticklabels':True,  'dtick':3},
                   # xaxis={'showticklabels':True,  'tickangle':-45},
@@ -81,7 +74,6 @@ def update_change(selected_dropdown_value):
         trace.append(go.Bar(y=df_sub.columns[:-1],
                             x = df_sub.loc[model][:-1].values, orientation='h',
                             name=model,
-                            # textposition='bottom center',
                             ))
     # STEP 3
     traces = [trace]
@@ -99,9 +91,6 @@ def update_change(selected_dropdown_value):
                   template='plotly_dark',
                   paper_bgcolor='rgba(0, 0, 0, 0)',
                   plot_bgcolor='rgba(0, 0, 0, 0)',
-                  # margin={'b': 15},
-                  # hovermode='x',
-                  # autosize=True,
                   title={'text': 'Last Run per Machine', 'font': {'color': 'white'}, 'x': 0.5, 'font_size':25},
                   yaxis={'range': [df_sub.columns[:-1][0], df_sub.columns[:-1][-1]], 'showticklabels':True,  'dtick':1,},
                   xaxis={'showticklabels':True,  'dtick':"D3",  'tickangle':-45},
@@ -148,13 +137,11 @@ last_run_delta = []
 for index_val in cdl_df.index:
     last_run_delta.append(cdl_df.loc[[index_val]].max(axis=1).values[0])
 
-# last_run_delta = pd.Series(pd.Series((pd.Timestamp('now') - cdl_df.apply(lambda x: max(x), axis=1)).dt.days))
 cdl_df['days_since_last_run'] = last_run_delta
 cdl_df['days_since_latest_run'] = (pd.Timestamp('now') - cdl_df['days_since_last_run']).dt.days
 cdl_df.drop(columns = ['days_since_last_run'], inplace=True)
 cdl_df = cdl_df.sort_index()
 
-# cdl_df.to_csv("impala_to_Moms_v2_dashboard.csv")
 
 app.layout = html.Div(children=[
 
