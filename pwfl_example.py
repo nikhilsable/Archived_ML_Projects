@@ -30,3 +30,6 @@ plt.figure()
 plt.plot(x, y, 'o')
 plt.plot(x_hat, y_hat, '-')
 plt.show()
+
+print("Slopes : {}".format(my_pwlf.slopes))
+print("Intercepts : {}".format(my_pwlf.intercepts))
