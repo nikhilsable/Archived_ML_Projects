@@ -62,6 +62,22 @@ def use_training_scaler(df, model_name):
 
 	return df
 
+
+def load_scaler_and_transform(df, model_name):
+    import joblib
+
+    scaler_filename = "scaler_" + model_name + ".gz"  # scaler pickle file
+    min_max_scaler = joblib.load(scaler_filename)
+    print("********** Scaler Retrieved ***********")
+
+    for col in df.columns:  # go through all of the columns
+        df[col] = min_max_scaler.transform(df[col].values.reshape(-1, 1))
+
+    print("********** Data Transformed ***********")
+
+    return df
+
+
 def split_sequences(df, n_steps, model_name, training = 0):
 	from numpy import array
 
@@ -158,11 +174,11 @@ def load_gold_prices_dataset():
 dataset = load_gold_prices_dataset()
 
 # lookback = 120  # how long of a preceeding sequence to collect for RNN
-lookahead = 60  # how far into the future are we trying to predict?
+lookahead = 90  # how far (timesteps) into the future are we trying to predict?
 n_steps = 30
 epochs = 5 # set the number of epochs you want the NN to run for
 
-model_name = f"lstm_right_enc_{pd.Timestamp('now').strftime('%Y_%m_%d')}"  # save model and architecture to single file
+model_name = f"univariate_lstm_model_{pd.Timestamp('now').strftime('%Y_%m_%d')}"  # save model and architecture to single file
 
 ## here, split away some slice of the future data from the main main_df.
 train_size_ix_split = int(.80*len(dataset))
@@ -196,18 +212,18 @@ history = model.fit(X_train, Y_train, epochs=20,
                     validation_data=(X_valid, Y_valid))
 
 #Plot loss
-plot_learning_curves(history.history["loss"], history.history["val_loss"])
+# plot_learning_curves(history.history["loss"], history.history["val_loss"])
 # plt.show()
 
 #Predict based on Test data (X_test)
 Y_pred = model.predict(X_test)
 
 plot_multiple_forecasts(X_test, Y_test, Y_pred)
-plt.show()
+# plt.show()
 
 model.evaluate(X_valid, Y_valid)
 
-# print(f"train data: {len(train_x)} validation: {len(validation_x)}")
+# print(f"train data: {len(train_x)} validation: {le  n(validation_x)}")
 
 #last sample , last value prediction
 untransformed_df = pd.DataFrame(Y_pred[-1][-1])
@@ -217,5 +233,18 @@ display(test_df)
 test_df.index = pd.date_range(start=(pd.Timestamp(dataset.index.max()) + pd.Timedelta(days=1)), periods = len(test_df), freq='D')
 test_df.columns = ['Predicted']
 combined_df = dataset.join(test_df, how='outer')
-combined_df.plot()
- 
+# combined_df.plot()
+
+#Last window based prediction
+last_values_from_dataset = dataset.iloc[-n_steps:]
+last_values_from_dataset = load_scaler_and_transform(last_values_from_dataset.copy(), model_name)
+Y_pred_new = model.predict(last_values_from_dataset.values.reshape((1, last_values_from_dataset.shape[0], last_values_from_dataset.shape[1])))
+df_new_untransformed = pd.DataFrame(Y_pred_new[-1][-1])
+df_new = use_training_scaler(df_new_untransformed, model_name)
+#For future prediction based on last window
+# df_new.index = pd.date_range(start=(pd.Timestamp(dataset.index.max()) + pd.Timedelta(days=1)), periods = len(df_new), freq='D')
+#For testing
+df_new.index = pd.date_range(start=(pd.Timestamp(last_values_from_dataset.index.min()) + pd.Timedelta(days=1)), periods = len(df_new), freq='D')
+df_new.columns = ['Predicted']
+combined_df_new = dataset.join(df_new, how='outer')
+combined_df_new.plot(alpha=0.2, style='8')
