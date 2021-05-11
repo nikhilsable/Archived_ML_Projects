@@ -4,9 +4,6 @@
 """
 import os
 import pandas as pd
-# from tensorflow.keras.models import load_model
-from numpy import hstack
-from numpy import array
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -15,112 +12,82 @@ from tensorflow import keras
 # To plot pretty figures
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-mpl.rc('axes', labelsize=14)
-mpl.rc('xtick', labelsize=12)
-mpl.rc('ytick', labelsize=12)
 
-# Where to save the figures
-PROJECT_ROOT_DIR = "."
-CHAPTER_ID = "rnn"
-IMAGES_PATH = os.path.join(PROJECT_ROOT_DIR, "images", CHAPTER_ID)
-os.makedirs(IMAGES_PATH, exist_ok=True)
 
 def model_configs(dataset):
     config_dict = {
-    'lookahead' : 2,  # how far (timesteps) into the future are we trying to predict?
-    'n_steps' : 4,  # No of timesteps in each training/evaluation sample
-    'epochs' : 12,  # set the number of epochs you want the NN to run for
-    'model_name' : f"univariate_lstm_model_{pd.Timestamp('now').strftime('%Y_%m_%d')}.h5",  # save model and architecture to single file
+    'lookahead' : 180,  # how far (timesteps) into the future are we trying to predict?
+    'n_steps' : 120,  # No of timesteps in each training/evaluation sample
+    'epochs' : 30,  # set the number of epochs you want the NN to run for
+    'model_name' : f"multivariate_lstm_model_{pd.Timestamp('now').strftime('%Y_%m_%d')}",  # save model and architecture to single file
 
     ## here, split away some slice of the future data from the main main_df.
     'train_size_ix_split' : int(.80 * len(dataset)),
     'validation_size_ix_split' : int(.80 * len(dataset)) + int(.10 * len(dataset)),
     'training' : 1,
+    'last_train_index':dataset.index.max(),
+    'target_col': 0, #Note : Arrange input dataset with target col at 0 or -1
+    'scaler_filename' : f"scaler_multivariate_lstm_{pd.Timestamp('now').strftime('%Y_%m_%d')}.pkl"
 
     }
 
     return config_dict
 
-def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
-    path = os.path.join(IMAGES_PATH, fig_id + "." + fig_extension)
-    print("Saving figure", fig_id)
-    if tight_layout:
-        plt.tight_layout()
-    plt.savefig(path, format=fig_extension, dpi=resolution)
 
 def scale_and_save_scaler(df, model_name):
-	from sklearn.preprocessing import MinMaxScaler
-	min_max_scaler = MinMaxScaler()
+    from sklearn.preprocessing import StandardScaler
+    standard_scaler = StandardScaler()
 
-	for col in df.columns:  # go through all of the columns
-		df[col] = min_max_scaler.fit_transform(df[col].values.reshape(-1, 1))
+    df[list(df.columns)] = standard_scaler.fit_transform(df)
 
-	scaler_filename = "scaler_"+model_name+".gz" #scaler pickle file
+    # Save scaler
+    from pickle import dump
+    dump(standard_scaler, open(config_dict['scaler_filename'], 'wb'))
+    print("********** Scaler Saved *************")
 
-	# Save scaler
-	import joblib
-	joblib.dump(min_max_scaler, scaler_filename)
+    return df
 
-	print("********** Scaler Saved *************")
+def do_inverse_transform(df, config_dict):
+    from pickle import load
 
-	return df
-
-def do_inverse_transform(df, model_name):
-	import joblib
-
-	scaler_filename = "scaler_" + model_name + ".gz"  # scaler pickle file
-	min_max_scaler = joblib.load(scaler_filename)
-
-	for col in df.columns:  # go through all of the columns
-		df[col] = min_max_scaler.inverse_transform(df[col].values.reshape(-1, 1))
-
-	print("********** Scaler Retrieved ***********")
-
-	return df
-
-def load_scaler_and_transform(df, model_name):
-    import joblib
-
-    scaler_filename = "scaler_" + model_name + ".gz"  # scaler pickle file
-    min_max_scaler = joblib.load(scaler_filename)
+    standard_scaler = load(open(config_dict['scaler_filename'], 'rb'))
     print("********** Scaler Retrieved ***********")
 
-    for col in df.columns:  # go through all of the columns
-        df[col] = min_max_scaler.transform(df[col].values.reshape(-1, 1))
+    df[list(df.columns)] = standard_scaler.inverse_transform(df)
+
+    return df
+
+def load_scaler_and_transform(df, model_name):
+    from pickle import load
+
+    standard_scaler = load(open(config_dict['scaler_filename'], 'rb'))
+    print("********** Scaler Retrieved ***********")
+
+    df[list(df.columns)] = standard_scaler.transform(df)
 
     print("********** Data Transformed ***********")
 
     return df
 
-def split_sequences(df, n_steps, model_name, training = 0):
-	from numpy import array
+def split_sequences(df, config_dict):
+    from numpy import array
 
-	#fit trans if training, else just transform
-	if training==1:
-		df = scale_and_save_scaler(df, model_name)
-	else:
-		df = do_inverse_transform(df, model_name)
+    trainX = []
+    trainY = []
 
-	df.dropna(inplace=True)
-	df_extracted = np.array(df.values.flatten())
+    n_future = config_dict['lookahead']  # Number of days we want to predict into the future
+    n_past = config_dict['n_steps']  # Number of past days we want to use to predict the future
 
-    # split a multivariate sequence into samples
-	X, y = [], []
-	for i in range(len(df_extracted)):# find the end of this pattern
-		end_ix = i + n_steps
-		out_end_ix = end_ix + n_steps + 1
-	# check if we are beyond the dataset
-		if out_end_ix > len(df_extracted):
-			break
-        # gather input and output parts of the pattern
-		seq_x, seq_y = df_extracted[i:end_ix], df_extracted[end_ix:out_end_ix-1]
-		X.append(seq_x)
-		# y.append(seq_y)
+    for i in range(n_past, len(df_for_training_scaled) - n_future + 1):
+        trainX.append(df_for_training_scaled[i - n_past:i, :])
+        trainY.append(df_for_training_scaled[i :i + n_future, config_dict['target_col']]) # for target variable
 
-	# X = np.array(X)
-	# y = np.array(y)
+    X, Y = np.array(trainX), np.array(trainY)
 
-	return np.array(X)[..., np.newaxis] #, np.array(y)[..., np.newaxis]
+    print('trainX shape == {}.'.format(X.shape))
+    print('trainY shape == {}.'.format(Y.shape))
+
+    return X, Y
 
 def plot_series(series, y=None, y_pred=None, x_label="Time", y_label="scaled(y)"):
     plt.plot(series, ".-")
@@ -135,9 +102,6 @@ def plot_series(series, y=None, y_pred=None, x_label="Time", y_label="scaled(y)"
         plt.ylabel(y_label, fontsize=16, rotation=0)
     # plt.hlines(0, 0, 100, linewidth=1)
     # plt.axis([0, n_steps + 1, -1, 1])
-
-def last_time_step_mse(Y_true, Y_pred):
-    return keras.metrics.mean_squared_error(Y_true[:, -1], Y_pred[:, -1])
 
 def plot_multiple_forecasts(X, Y, Y_pred):
     n_steps = X.shape[1]
@@ -183,101 +147,91 @@ def load_gold_prices_dataset():
 
     return dataset
 
-
-
 def delhi_climate_data():
     # load DataFrame
     df = pd.read_csv('DailyDelhiClimateTrain.csv', index_col='date')
     df.index = pd.DatetimeIndex(df.index)
     df = df.fillna(method='ffill')
 
-    df = df[['meantemp']]
+    # df = df[['meantemp']]
 
     dataset = df.copy()
 
     return dataset
 
 def pre_process_data(config_dict, dataset):
-    np.random.seed(42)
-    series = split_sequences(dataset.copy(), config_dict['n_steps'] + config_dict['lookahead'],
-                             config_dict['model_name'], training=config_dict['training'])
+    X, Y = split_sequences(dataset.copy(), config_dict)
 
-    X_train = series[:config_dict['train_size_ix_split'], :config_dict['n_steps']]
-    X_valid = series[config_dict['train_size_ix_split']:config_dict['validation_size_ix_split'],
-              :config_dict['n_steps']]
-    X_test = series[config_dict['validation_size_ix_split']:, :config_dict['n_steps']]
-    Y = np.empty((series.shape[0], config_dict['n_steps'], config_dict['lookahead']))
-    for step_ahead in range(1, config_dict['lookahead'] + 1):
-        Y[..., step_ahead - 1] = series[..., step_ahead:step_ahead + config_dict['n_steps'], 0]
-    Y_train = Y[:config_dict['train_size_ix_split']]
-    Y_valid = Y[config_dict['train_size_ix_split']:config_dict['validation_size_ix_split']]
-    Y_test = Y[config_dict['validation_size_ix_split']:]
+    return X, Y
 
-    return X_train, X_valid, X_test, Y_train, Y_valid, Y_test
-
-def build_train_univariate_lstm_model(config_dict, X_train, X_valid, Y_train, Y_valid):
+def build_train_multivariate_lstm_model(config_dict, X, Y):
+    from tensorflow.keras.callbacks import EarlyStopping
     # Train LSTM model if training==1 else load model
     if config_dict['training'] == 1:
         np.random.seed(42)
         tf.random.set_seed(42)
 
         model = keras.models.Sequential([
-            keras.layers.LSTM(20, return_sequences=True, input_shape=[None, 1]),
-            keras.layers.LSTM(20, return_sequences=True),
-            keras.layers.TimeDistributed(keras.layers.Dense(config_dict['lookahead']))
+            keras.layers.LSTM(64, activation='relu', return_sequences=True, input_shape=(X.shape[1], X.shape[2])),
+            keras.layers.LSTM(32, return_sequences=False),
+            keras.layers.Dropout(0.2),
+            # keras.layers.TimeDistributed(keras.layers.Dense(config_dict['lookahead']))
+            keras.layers.Dense(Y.shape[1])
         ])
 
-        model.compile(loss="mse", optimizer="adam", metrics=[last_time_step_mse])
-        history = model.fit(X_train, Y_train, epochs=config_dict['epochs'],
-                            validation_data=(X_valid, Y_valid))
+        model.compile(loss="mse", optimizer="adam")
+
+        early_stopping = EarlyStopping(monitor='val_loss', patience=3)
+
+        history = model.fit(X, Y, epochs=config_dict['epochs'],
+                            validation_split=0.1, callbacks=[early_stopping])
 
         # Plot loss
         plot_learning_curves(history.history["loss"], history.history["val_loss"])
         plt.show()
 
-        # model metrics on validation data
-        model.metrics_names
-        model.evaluate(X_valid, Y_valid)
-
-        validation_test_result_df = pd.DataFrame(
-            data={f'Validation {model.metrics_names[0]}': f'{model.evaluate(X_valid, Y_valid)[0]}',
-                  f'Validation {model.metrics_names[1]}': f'{model.evaluate(X_valid, Y_valid)[1]}'},
-            index=range(0, len(model.metrics_names) - 1))
-
-        display(validation_test_result_df)
-        config_dict.update({'Validation Test':validation_test_result_df})
+        print(f"Model Validation Loss --> {history.history['val_loss'][-1]}")
 
         #save model
-        model.save(config_dict['model_name'])
+        model.save(config_dict['model_name']+'.h5')
+        print("Model Saved...")
 
-        return model, config_dict
+        return config_dict
 
 def load_trained_model(config_dict):
     from tensorflow.keras.models import load_model
 
     try:
-        model = load_model(config_dict['model_name'], custom_objects = {'last_time_step_mse': last_time_step_mse}, compile = False)
+        model = load_model(config_dict['model_name']+'.h5', compile = False)
     except:
         print("Couldn't retrieve model...")
 
-
     return model
 
-def predict_using_last_window(model, dataset, config_dict):
+def predict_using_last_window(dataset, config_dict):
+    model = load_trained_model(config_dict)
     # Last window based prediction
-    last_values_from_dataset = dataset.iloc[-config_dict['n_steps']:]
-    last_values_from_dataset = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict['model_name'])
-    Y_pred_new = model.predict(last_values_from_dataset.values.reshape(
-        (1, last_values_from_dataset.shape[0], last_values_from_dataset.shape[1])))
-    df_new_untransformed = pd.DataFrame(Y_pred_new[-1][-1])
-    df_new = do_inverse_transform(df_new_untransformed, config_dict['model_name'])
+    last_values_from_dataset = dataset[-config_dict['lookahead']:]
+    last_values_from_dataset_transformed = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict['model_name'])
+
+    # last_values_from_dataset_transformed =  last_values_from_dataset
+    Y_pred_new = model.predict(last_values_from_dataset_transformed.values.reshape(1, last_values_from_dataset_transformed.shape[0], last_values_from_dataset_transformed.shape[1]))
+    df_new_transformed = pd.DataFrame(Y_pred_new[-1])
+
+    #Creating temp future df to make it easier to inverse scale/get desired shape
+    future_dataset = pd.DataFrame(np.zeros((last_values_from_dataset.shape[0], last_values_from_dataset.shape[1])))
+    future_dataset.iloc[:, 0] = df_new_transformed.values
+    future_dataset.columns = last_values_from_dataset.columns
+
+    #Perform inverse transform to get back unscaled values
+    df_new = do_inverse_transform(future_dataset.copy(), config_dict)
+    df_new = df_new[[future_dataset.columns[config_dict['target_col']]]]
+
     # For future prediction based on last window
-    # df_new.index = pd.date_range(start=(pd.Timestamp(dataset.index.max()) + pd.Timedelta(days=1)), periods = len(df_new), freq='D')
-    # For testing
-    df_new.index = pd.date_range(start=(pd.Timestamp(last_values_from_dataset.index.min()) + pd.Timedelta(days=1)),
+    df_new.index = pd.date_range(start=(pd.Timestamp(config_dict['last_train_index']) + pd.Timedelta(days=1)),
                                  periods=len(df_new), freq='D')
-    df_new.columns = ['Predicted']
-    combined_df_new = dataset.join(df_new, how='outer')
+    df_new.columns = [f"Predicted {future_dataset.columns[config_dict['target_col']]}"]
+    combined_df_new = pd.DataFrame(dataset).join(df_new, how='outer')
     combined_df_new.plot(alpha=0.2, style='8')
 
     return combined_df_new
@@ -291,23 +245,27 @@ def make_test_data_prediction_plots(X_test, Y_test, config_dict):
 
     return Y_pred_test
 
-dataset = load_gold_prices_dataset()
-# dataset = delhi_climate_data()
+# dataset = load_gold_prices_dataset()
+dataset = delhi_climate_data()
 
 #Create model/script configuration
-config_dict = model_configs(dataset)
+config_dict = model_configs(dataset.copy())
 
-#pre-process data/split into sequences
-X_train, X_valid, X_test, Y_train, Y_valid, Y_test = pre_process_data(config_dict, dataset)
+#Scale data
+dataset_scaled = scale_and_save_scaler(dataset.copy(), config_dict['model_name'])
 
-mmm
+# Ensure values are of dtype float for ML
+df_for_training_scaled = dataset_scaled.values.astype('float')
 
+#pre-process data/split into sequences 
+X, Y = pre_process_data(config_dict, df_for_training_scaled)
 
 #Build LSTM Model
-model, config_dict = build_train_univariate_lstm_model(config_dict, X_train, X_valid, Y_train, Y_valid)
+config_dict = build_train_multivariate_lstm_model(config_dict, X, Y)
 
 #Predict based on Test data (X_test)
-Y_pred_test = make_test_data_prediction_plots(X_test, Y_test, config_dict)
+# Y_pred_test = make_test_data_prediction_plots(X_test, Y_test, config_dict)
 
 #Make prediction and plot
-prediction_df = predict_using_last_window(model, dataset, config_dict)
+prediction_df = predict_using_last_window(dataset.copy(), config_dict)
+prediction_df[['meantemp',  'Predicted meantemp']].plot(style='8', alpha=0.2)
