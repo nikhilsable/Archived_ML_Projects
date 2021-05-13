@@ -89,20 +89,6 @@ def split_sequences(df, config_dict):
 
     return X, Y
 
-def plot_series(series, y=None, y_pred=None, x_label="Time", y_label="scaled(y)"):
-    plt.plot(series, ".-")
-    if y is not None:
-        plt.plot(n_steps, y, "bx", markersize=10)
-    if y_pred is not None:
-        plt.plot(n_steps, y_pred, "ro")
-    plt.grid(True)
-    if x_label:
-        plt.xlabel(x_label, fontsize=16)
-    if y_label:
-        plt.ylabel(y_label, fontsize=16, rotation=0)
-    # plt.hlines(0, 0, 100, linewidth=1)
-    # plt.axis([0, n_steps + 1, -1, 1])
-
 def plot_multiple_forecasts(X, Y, Y_pred):
     n_steps = X.shape[1]
     ahead = Y.shape[1]
