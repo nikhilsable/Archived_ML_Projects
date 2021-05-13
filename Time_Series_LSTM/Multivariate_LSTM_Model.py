@@ -2,7 +2,6 @@
 """multi_step_lstm_v1.ipynb
 
 """
-import os
 import pandas as pd
 import numpy as np
 import tensorflow as tf
@@ -34,7 +33,7 @@ def model_configs(dataset):
     return config_dict
 
 
-def scale_and_save_scaler(df, model_name):
+def scale_and_save_scaler(df, config_dict):
     from sklearn.preprocessing import StandardScaler
     standard_scaler = StandardScaler()
 
@@ -57,7 +56,7 @@ def do_inverse_transform(df, config_dict):
 
     return df
 
-def load_scaler_and_transform(df, model_name):
+def load_scaler_and_transform(df, config_dict):
     from pickle import load
 
     standard_scaler = load(open(config_dict['scaler_filename'], 'rb'))
@@ -70,15 +69,13 @@ def load_scaler_and_transform(df, model_name):
     return df
 
 def split_sequences(df, config_dict):
-    from numpy import array
-
     trainX = []
     trainY = []
 
     n_future = config_dict['lookahead']  # Number of days we want to predict into the future
     n_past = config_dict['n_steps']  # Number of past days we want to use to predict the future
 
-    for i in range(n_past, len(df_for_training_scaled) - n_future + 1):
+    for i in range(n_past, len(df) - n_future + 1):
         trainX.append(df_for_training_scaled[i - n_past:i, :])
         trainY.append(df_for_training_scaled[i :i + n_future, config_dict['target_col']]) # for target variable
 
@@ -165,7 +162,7 @@ def build_train_multivariate_lstm_model(config_dict, X, Y):
             keras.layers.Dense(Y.shape[1])
         ])
 
-        model.compile(loss="mse", optimizer="adam")
+        model.compile(loss="mse", optimizer="adam", experimental_run_tf_function=False)
 
         early_stopping = EarlyStopping(monitor='val_loss', patience=3)
 
@@ -198,7 +195,7 @@ def predict_using_last_window(dataset, config_dict):
     model = load_trained_model(config_dict)
     # Last window based prediction
     last_values_from_dataset = dataset[-config_dict['lookahead']:]
-    last_values_from_dataset_transformed = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict['model_name'])
+    last_values_from_dataset_transformed = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict)
 
     # last_values_from_dataset_transformed =  last_values_from_dataset
     Y_pred_new = model.predict(last_values_from_dataset_transformed.values.reshape(1, last_values_from_dataset_transformed.shape[0], last_values_from_dataset_transformed.shape[1]))
@@ -238,7 +235,7 @@ dataset = delhi_climate_data()
 config_dict = model_configs(dataset.copy())
 
 #Scale data
-dataset_scaled = scale_and_save_scaler(dataset.copy(), config_dict['model_name'])
+dataset_scaled = scale_and_save_scaler(dataset.copy(), config_dict)
 
 # Ensure values are of dtype float for ML
 df_for_training_scaled = dataset_scaled.values.astype('float')
