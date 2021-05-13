@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
-"""multi_step_lstm_v1.ipynb
+"""multi_stepunivariate_lstm_v1
 
 """
 import os
 import pandas as pd
-# from tensorflow.keras.models import load_model
-from numpy import hstack
-from numpy import array
+
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
@@ -51,7 +49,7 @@ def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
         plt.tight_layout()
     plt.savefig(path, format=fig_extension, dpi=resolution)
 
-def scale_and_save_scaler(df, model_name):
+def scale_and_save_scaler(df, config_dict):
     from sklearn.preprocessing import StandardScaler
     standard_scaler = StandardScaler()
 
@@ -74,7 +72,7 @@ def do_inverse_transform(df, config_dict):
 
     return df
 
-def load_scaler_and_transform(df, model_name):
+def load_scaler_and_transform(df, config_dict):
     from pickle import load
 
     standard_scaler = load(open(config_dict['scaler_filename'], 'rb'))
@@ -86,11 +84,10 @@ def load_scaler_and_transform(df, model_name):
 
     return df
 
-def split_sequences(df, n_steps, model_name, training = 0):
-    from numpy import array
+def split_sequences(df, n_steps, config_dict):
 
     #fit trans if training, else just transform
-    df = scale_and_save_scaler(df, model_name)
+    df = scale_and_save_scaler(df, config_dict)
 
     df.dropna(inplace=True)
     df_extracted = np.array(df.values.flatten())
@@ -108,20 +105,6 @@ def split_sequences(df, n_steps, model_name, training = 0):
         X.append(seq_x)
 
     return np.array(X)[..., np.newaxis] #, np.array(y)[..., np.newaxis]
-
-def plot_series(series, y=None, y_pred=None, x_label="Time", y_label="scaled(y)"):
-    plt.plot(series, ".-")
-    if y is not None:
-        plt.plot(n_steps, y, "bx", markersize=10)
-    if y_pred is not None:
-        plt.plot(n_steps, y_pred, "ro")
-    plt.grid(True)
-    if x_label:
-        plt.xlabel(x_label, fontsize=16)
-    if y_label:
-        plt.ylabel(y_label, fontsize=16, rotation=0)
-    # plt.hlines(0, 0, 100, linewidth=1)
-    # plt.axis([0, n_steps + 1, -1, 1])
 
 def last_time_step_mse(Y_true, Y_pred):
     return keras.metrics.mean_squared_error(Y_true[:, -1], Y_pred[:, -1])
@@ -186,8 +169,7 @@ def delhi_climate_data():
 
 def pre_process_data(config_dict, dataset):
     np.random.seed(42)
-    series = split_sequences(dataset.copy(), config_dict['n_steps'] + config_dict['lookahead'],
-                             config_dict['model_name'], training=config_dict['training'])
+    series = split_sequences(dataset.copy(), config_dict['n_steps'] + config_dict['lookahead'],config_dict)
 
     X_train = series[:config_dict['train_size_ix_split'], :config_dict['n_steps']]
     X_valid = series[config_dict['train_size_ix_split']:config_dict['validation_size_ix_split'],
@@ -235,7 +217,6 @@ def build_train_univariate_lstm_model(config_dict, X_train, X_valid, Y_train, Y_
                   f'Validation {model.metrics_names[1]}': f'{model.evaluate(X_valid, Y_valid)[1]}'},
             index=range(0, len(model.metrics_names) - 1))
 
-        display(validation_test_result_df)
         config_dict.update({'Validation Test':validation_test_result_df})
 
         #save model
@@ -258,7 +239,7 @@ def predict_using_last_window(model, dataset, config_dict):
     model = load_trained_model(config_dict)
     # Last window based prediction
     last_values_from_dataset = dataset.iloc[-config_dict['n_steps']:]
-    last_values_from_dataset = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict['model_name'])
+    last_values_from_dataset = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict)
     Y_pred_new = model.predict(last_values_from_dataset.values.reshape(
         (1, last_values_from_dataset.shape[0], last_values_from_dataset.shape[1])))
     df_new_untransformed = pd.DataFrame(Y_pred_new[-1][-1])
