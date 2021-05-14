@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 def model_configs(dataset):
     config_dict = {
     'lookahead' : 180,  # how far (timesteps) into the future are we trying to predict?
-    'n_steps' : 120,  # No of timesteps in each training/evaluation sample
+    'n_steps' : 30,  # No of timesteps in each training/evaluation sample
     'epochs' : 30,  # set the number of epochs you want the NN to run for
     'model_name' : f"multivariate_lstm_model_{pd.Timestamp('now').strftime('%Y_%m_%d')}",  # save model and architecture to single file
 
@@ -110,15 +110,14 @@ def load_sensor_dataset():
     df = pd.read_csv(r"test_data.csv")
     df = df.set_index('time')
     df.index = pd.DatetimeIndex(df.index)
-    # df.columns = ['left_sensor', 'right_sensor', 'pressure']
+    df.columns = ['left_sensor', 'right_sensor', 'pressure']
     df = df.fillna(method='ffill')
 
     # For univariate
-    df = df[['right_sensor']]
-    df = df.tail(7000)
-    dataset = df.copy()
+    # df = df[['right_sensor']]
+    # df = df.tail(7000)
 
-    return dataset
+    return df.copy()
 
 def load_gold_prices_dataset():
     # load DataFrame
@@ -194,7 +193,7 @@ def load_trained_model(config_dict):
 def predict_using_last_window(dataset, config_dict):
     model = load_trained_model(config_dict)
     # Last window based prediction
-    last_values_from_dataset = dataset[-config_dict['lookahead']:]
+    last_values_from_dataset = dataset[-config_dict['n_steps']:]
     last_values_from_dataset_transformed = load_scaler_and_transform(last_values_from_dataset.copy(), config_dict)
 
     # last_values_from_dataset_transformed =  last_values_from_dataset
@@ -202,7 +201,7 @@ def predict_using_last_window(dataset, config_dict):
     df_new_transformed = pd.DataFrame(Y_pred_new[-1])
 
     #Creating temp future df to make it easier to inverse scale/get desired shape
-    future_dataset = pd.DataFrame(np.zeros((last_values_from_dataset.shape[0], last_values_from_dataset.shape[1])))
+    future_dataset = pd.DataFrame(np.zeros((config_dict['lookahead'], last_values_from_dataset.shape[1])))
     future_dataset.iloc[:, 0] = df_new_transformed.values
     future_dataset.columns = last_values_from_dataset.columns
 
@@ -215,24 +214,67 @@ def predict_using_last_window(dataset, config_dict):
                                  periods=len(df_new), freq='D')
     df_new.columns = [f"Predicted {future_dataset.columns[config_dict['target_col']]}"]
     combined_df_new = pd.DataFrame(dataset).join(df_new, how='outer')
-    combined_df_new.plot(alpha=0.2, style='8')
+    # combined_df_new.plot(alpha=0.2, style='8')
 
     return combined_df_new
 
-def make_test_data_prediction_plots(X_test, Y_test, config_dict):
+def make_test_data_prediction(X_test, config_dict):
     model = load_trained_model(config_dict)
     Y_pred_test = model.predict(X_test)
 
-    plot_multiple_forecasts(X_test, Y_test, Y_pred_test)
-    plt.show()
-
     return Y_pred_test
 
-# dataset = load_gold_prices_dataset()
-dataset = delhi_climate_data()
+#Calculate RMSE
+def calculate_rmse(Y_true, Y_pred):
+    from sklearn.metrics import mean_squared_error
+
+    rmse = np.sqrt(mean_squared_error(Y_true, Y_pred))
+
+    return rmse
+
+def make_prediction_on_test_data(test_set, config_dict, raw_dataset):
+    # Transform test data based on train scale object
+    test_dataset_transformed = load_scaler_and_transform(test_set.copy(), config_dict)
+    # Interpret as float to make life easier for algo
+    test_dataset_transformed = test_dataset_transformed.values.astype('float')
+    #chop timeseries data for LSTMs
+    # X_test, Y_test = pre_process_data(config_dict, test_dataset_transformed)
+    X_test = test_dataset_transformed[:config_dict['n_steps']]
+    Y_test = test_dataset_transformed[-config_dict['lookahead']:]
+
+    #Load model and make prediction based on test data
+    Y_pred_test = make_test_data_prediction(X_test.reshape(1, X_test.shape[0], X_test.shape[1]), config_dict)
+    #Creating temp df to make it easier to inverse scale/get desired shape
+    temp_df = pd.DataFrame(np.zeros((len(Y_pred_test.flatten()), test_set.shape[1])))
+    temp_df.iloc[:, config_dict['target_col']] = Y_pred_test.flatten()
+    temp_df.columns = test_set.columns
+    #Perform inverse transform to get back unscaled values
+    df_new = do_inverse_transform(temp_df.copy(), config_dict)
+    # For future prediction based on last window
+    df_new.index = pd.date_range(start=(pd.Timestamp(test_set.head(config_dict['n_steps']).index.max()) + pd.Timedelta(days=1)),
+                                    periods=len(df_new), freq='D')
+    df_new = df_new[[df_new.columns[config_dict['target_col']]]]
+    df_new.columns = [f"Predicted {temp_df.columns[config_dict['target_col']]}"]
+    combined_df_new = pd.DataFrame(df_new).join(raw_dataset[[raw_dataset.columns[config_dict['target_col']]]], how='outer')
+
+    combined_df_new.plot(alpha=0.2, style='8')
+
+    rmse_df = raw_dataset[[raw_dataset.columns[config_dict['target_col']]]].join(pd.DataFrame(df_new), how='right')
+    print(f"RMSE on Test Set --> {np.round(calculate_rmse(rmse_df[rmse_df.columns[0]].values, rmse_df[rmse_df.columns[1]].values), 3)}")
+
+    return combined_df_new
+
+# raw_dataset = load_gold_prices_dataset()
+raw_dataset = delhi_climate_data()
+# raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
 
 #Create model/script configuration
-config_dict = model_configs(dataset.copy())
+config_dict = model_configs(raw_dataset.copy())
+
+if config_dict['training'] == 1:
+    #holdout data fir a test set
+    dataset = raw_dataset.copy().iloc[:-(config_dict['lookahead']+config_dict['n_steps']), :]
+    test_set = raw_dataset.iloc[-(config_dict['lookahead']+config_dict['n_steps']):, :]
 
 #Scale data
 dataset_scaled = scale_and_save_scaler(dataset.copy(), config_dict)
@@ -247,8 +289,9 @@ X, Y = pre_process_data(config_dict, df_for_training_scaled)
 config_dict = build_train_multivariate_lstm_model(config_dict, X, Y)
 
 #Predict based on Test data (X_test)
-# Y_pred_test = make_test_data_prediction_plots(X_test, Y_test, config_dict)
+test_prediction_df = make_prediction_on_test_data(test_set, config_dict, raw_dataset)
 
-#Make prediction and plot
-prediction_df = predict_using_last_window(dataset.copy(), config_dict)
+#Make prediction based on last time window and plot
+prediction_df = predict_using_last_window(raw_dataset.copy(), config_dict)
 prediction_df[['meantemp',  'Predicted meantemp']].plot(style='8', alpha=0.2)
+
