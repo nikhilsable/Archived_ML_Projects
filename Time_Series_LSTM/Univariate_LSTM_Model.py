@@ -50,14 +50,14 @@ def save_fig(fig_id, tight_layout=True, fig_extension="png", resolution=300):
     plt.savefig(path, format=fig_extension, dpi=resolution)
 
 def scale_and_save_scaler(df, config_dict):
-    from sklearn.preprocessing import StandardScaler
-    standard_scaler = StandardScaler()
+    from sklearn.preprocessing import MinMaxScaler
+    minmax_scaler = MinMaxScaler()
 
-    df[list(df.columns)] = standard_scaler.fit_transform(df)
+    df[list(df.columns)] = minmax_scaler.fit_transform(df)
 
     # Save scaler
     from pickle import dump
-    dump(standard_scaler, open(config_dict['scaler_filename'], 'wb'))
+    dump(minmax_scaler, open(config_dict['scaler_filename'], 'wb'))
     print("********** Scaler Saved *************")
 
     return df
@@ -65,20 +65,20 @@ def scale_and_save_scaler(df, config_dict):
 def do_inverse_transform(df, config_dict):
     from pickle import load
 
-    standard_scaler = load(open(config_dict['scaler_filename'], 'rb'))
+    minmax_scaler = load(open(config_dict['scaler_filename'], 'rb'))
     print("********** Scaler Retrieved ***********")
 
-    df[list(df.columns)] = standard_scaler.inverse_transform(df)
+    df[list(df.columns)] = minmax_scaler.inverse_transform(df)
 
     return df
 
 def load_scaler_and_transform(df, config_dict):
     from pickle import load
 
-    standard_scaler = load(open(config_dict['scaler_filename'], 'rb'))
+    minmax_scaler = load(open(config_dict['scaler_filename'], 'rb'))
     print("********** Scaler Retrieved ***********")
 
-    df[list(df.columns)] = standard_scaler.transform(df)
+    df[list(df.columns)] = minmax_scaler.transform(df)
 
     print("********** Data Transformed ***********")
 
