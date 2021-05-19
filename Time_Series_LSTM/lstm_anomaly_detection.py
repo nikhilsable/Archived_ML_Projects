@@ -19,10 +19,10 @@ import plotly.graph_objects as go
 def model_configs(dataset):
     config_dict = {
     'lookahead' : 1,  # how far (timesteps) into the future are we trying to predict?
-    'n_steps' : 14,  # No of timesteps in each training/evaluation sample
-    'epochs' : 30,  # set the number of epochs you want the NN to run for
+    'n_steps' : 30,  # No of timesteps in each training/evaluation sample
+    'epochs' : 50,  # set the number of epochs you want the NN to run for
     'model_name' : f"encoder_decoder_lstm_model_{pd.Timestamp('now').strftime('%Y_%m_%d')}",  # save model and architecture to single file
-
+    'patience':3, 
     ## here, split away some slice of the future data from the main main_df.
     'train_size_ix_split' : int(.80 * len(dataset)),
     'validation_size_ix_split' : int(.80 * len(dataset)) + int(.10 * len(dataset)),
@@ -168,7 +168,7 @@ def build_train_multivariate_lstm_model(config_dict, X, Y):
 
         model.compile(loss="mae", optimizer="adam")
 
-        early_stopping = EarlyStopping(monitor='val_loss', patience=3, mode='min')
+        early_stopping = EarlyStopping(monitor='val_loss', patience=config_dict['patience'], mode='min')
 
         history = model.fit(X, Y, epochs=config_dict['epochs'],
                             validation_split=0.1, callbacks=early_stopping)
@@ -321,6 +321,7 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
 raw_dataset = delhi_climate_data()
 raw_dataset = raw_dataset[['meantemp']].copy()
 # raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
+# raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
 
 #Create model/script configuration
 config_dict = model_configs(raw_dataset.copy())
@@ -347,14 +348,7 @@ config_dict = build_train_multivariate_lstm_model(config_dict, X, Y)
 mae_threshold,config_dict = get_mae_threshold_training_set(X, config_dict, raw_dataset.copy())
 
 #Predict based on Test data (X_test)
-test_prediction_df = make_prediction_on_test_data(test_set.copy(), config_dict, raw_dataset)
+test_prediction_df = make_prediction_on_test_data(raw_dataset.copy(), config_dict, raw_dataset)
 
 #make anomaly plots
-fig = make_anomaly_plots(test_prediction_df.copy(), test_set, config_dict)
-
-mmm
-
-#Make prediction based on last time window and plot
-prediction_df = predict_using_last_window(raw_dataset.copy(), config_dict)
-prediction_df[['meantemp',  'Predicted meantemp']].plot(style='8', alpha=0.2)
-
+fig = make_anomaly_plots(test_prediction_df.copy(), raw_dataset, config_dict)
