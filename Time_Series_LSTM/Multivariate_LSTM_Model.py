@@ -32,7 +32,6 @@ def model_configs(dataset):
 
     return config_dict
 
-
 def scale_and_save_scaler(df, config_dict):
     from sklearn.preprocessing import MinMaxScaler
     minmax_scaler = MinMaxScaler()
