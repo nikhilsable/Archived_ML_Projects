@@ -240,7 +240,7 @@ def to_sequences(X, Y,  n_steps):
         
     return np.array(x_values), np.array(y_values)
 
-def get_mae_threshold_training_set(X,config_dict, raw_dataset):
+def get_mae_threshold_training_set(X,config_dict):
     #Load model and make prediction based on train data
     X_pred_train = make_prediction(X, config_dict)
 
@@ -258,7 +258,7 @@ def get_mae_threshold_training_set(X,config_dict, raw_dataset):
 
     return mae_threshold, config_dict
 
-def make_prediction_on_test_data(test_set, config_dict, raw_dataset):
+def make_prediction_on_test_data(test_set, config_dict):
     # Transform test data based on train scale object
     test_dataset_transformed = load_scaler_and_transform(test_set.copy(), config_dict)
     # Interpret as float to make life easier for algo
@@ -267,6 +267,9 @@ def make_prediction_on_test_data(test_set, config_dict, raw_dataset):
 
      #Load model and make prediction based on test data
     X_pred_test = make_prediction(X, config_dict)
+    # prediction_df = pd.DataFrame(X_pred_test[0], columns=[f"Predicted {test_set.columns[config_dict['target_col']]}"])
+    # prediction_df = do_inverse_transform(prediction_df, config_dict)
+
 
     # Calculate MAE threshold
     test_loss = np.mean(np.abs(X_pred_test - X), axis=1)
@@ -275,18 +278,22 @@ def make_prediction_on_test_data(test_set, config_dict, raw_dataset):
     plt.ylabel('Number of samples')
     plt.show()
     
-    test_score_df = pd.DataFrame(test_dataset_transformed[config_dict['n_steps']:])
+    test_score_df = pd.DataFrame(test_set[config_dict['n_steps']:])
     test_score_df['loss'] = test_loss
     test_score_df['threshold'] = config_dict['mae_threshold_train']
     test_score_df['anomaly'] = test_score_df['loss'] > test_score_df['threshold']
+    # test_score_df['Predicted Value'] = prediction_df.values
     
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=test_score_df.index, y=test_score_df['loss'], name='Test loss'))
     fig.add_trace(go.Scatter(x=test_score_df.index, y=test_score_df['threshold'], name='Threshold'))
     fig.update_layout(showlegend=True, title='Test loss vs. Threshold')
     fig.show()
+
+    # test_set.join(prediction_df, how='outer')
     
     return test_score_df
+
 
 def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
 
@@ -294,7 +301,7 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
         test_dataset_transformed = load_scaler_and_transform(test_set.copy(), config_dict)
         anomalies = test_prediction_df.loc[test_prediction_df['anomaly'] == True][[test_prediction_df.columns[config_dict['target_col']]]]
         anomalies.columns = ['Anomaly']
-        anomalies = do_inverse_transform(anomalies[[anomalies.columns[config_dict['target_col']]]], config_dict)
+        anomalies = anomalies[[anomalies.columns[config_dict['target_col']]]]
         combined_df = do_inverse_transform(test_dataset_transformed[[test_dataset_transformed.columns[config_dict['target_col']]]], config_dict).join(anomalies, how='outer')
         # combined_df.plot(style='8', alpha = 0.2)
 
@@ -314,14 +321,13 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
         py.offline.plot(fig)
 
 
-
     return fig
 
 # raw_dataset = load_gold_prices_dataset()
-raw_dataset = delhi_climate_data()
-raw_dataset = raw_dataset[['meantemp']].copy()
+# raw_dataset = delhi_climate_data()
+# raw_dataset = raw_dataset[['meantemp']].copy()
 # raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
-# raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
+raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
 
 #Create model/script configuration
 config_dict = model_configs(raw_dataset.copy())
@@ -345,10 +351,10 @@ X, Y = to_sequences(df_for_training_scaled, df_for_training_scaled, n_steps = co
 #Build LSTM Model
 config_dict = build_train_multivariate_lstm_model(config_dict, X, Y)
 
-mae_threshold,config_dict = get_mae_threshold_training_set(X, config_dict, raw_dataset.copy())
+mae_threshold,config_dict = get_mae_threshold_training_set(X, config_dict)
 
 #Predict based on Test data (X_test)
-test_prediction_df = make_prediction_on_test_data(raw_dataset.copy(), config_dict, raw_dataset)
+test_prediction_df = make_prediction_on_test_data(raw_dataset.copy(), config_dict)
 
 #make anomaly plots
-fig = make_anomaly_plots(test_prediction_df.copy(), raw_dataset, config_dict)
+fig = make_anomaly_plots(test_prediction_df.copy(), raw_dataset.copy(), config_dict)
