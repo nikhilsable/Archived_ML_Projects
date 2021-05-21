@@ -25,7 +25,7 @@ def model_configs(dataset):
     ## here, split away some slice of the future data from the main main_df.
     'train_size_ix_split' : int(.80 * len(dataset)),
     'validation_size_ix_split' : int(.80 * len(dataset)) + int(.10 * len(dataset)),
-    'training' : 1,
+    'training' :1,
     'last_train_index':dataset.index.max(),
     'target_col': 0, #Note : Arrange input dataset with target col at 0 or -1
     'scaler_filename' : f"scaler_encoder_decoder_lstm_{pd.Timestamp('now').strftime('%Y_%m_%d')}.pkl"
@@ -183,6 +183,15 @@ def build_train_multivariate_lstm_model(config_dict, X, Y):
 
         return config_dict
 
+    else:
+        model = load_trained_model(config_dict)
+
+        print(f"Existing model loaded --> {config_dict['model_name']+'.h5'}")
+
+        return config_dict
+
+
+
 def load_trained_model(config_dict):
     from tensorflow.keras.models import load_model
 
@@ -316,28 +325,24 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
     return fig
 
 #Datasets
-raw_dataset = load_gold_prices_dataset()
+# raw_dataset = load_gold_prices_dataset()
 # raw_dataset = delhi_climate_data()
 # raw_dataset = raw_dataset[['meantemp']].copy()
 # raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
-# raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
+raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
 
 #Create model/script configuration
 config_dict = model_configs(raw_dataset.copy())
 
-if config_dict['training'] == 1:
-    #holdout data fir a test set
-    dataset = raw_dataset.copy().iloc[:-(config_dict['lookahead']+config_dict['n_steps']), :]
-    test_set = raw_dataset.iloc[-(config_dict['lookahead']+config_dict['n_steps']):, :]
+#Split into train and test sets
+dataset = raw_dataset.copy().iloc[:-(config_dict['lookahead']+config_dict['n_steps']), :]
+test_set = raw_dataset.iloc[-(config_dict['lookahead']+config_dict['n_steps']):, :]
 
 #Scale data
 dataset_scaled = scale_and_save_scaler(dataset.copy(), config_dict)
 
 # Ensure values are of dtype float for ML
 df_for_training_scaled = dataset_scaled.astype('float')
-
-#pre-process data/split into sequences 
-# X, Y = pre_process_data(config_dict, df_for_training_scaled)
 
 X, Y = to_sequences(df_for_training_scaled, df_for_training_scaled, n_steps = config_dict['n_steps'])
 
