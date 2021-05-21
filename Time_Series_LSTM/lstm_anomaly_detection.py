@@ -8,7 +8,6 @@ import tensorflow as tf
 from tensorflow import keras
 
 #For plotting
-# To plot pretty figures
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -101,7 +100,6 @@ def plot_learning_curves(loss, val_loss):
     plt.plot(np.arange(len(loss)) + 0.5, loss, "b.-", label="Training loss")
     plt.plot(np.arange(len(val_loss)) + 1, val_loss, "r.-", label="Validation loss")
     plt.gca().xaxis.set_major_locator(mpl.ticker.MaxNLocator(integer=True))
-    # plt.axis([1, 20, 0, 0.05])
     plt.legend(fontsize=14)
     plt.xlabel("Epochs")
     plt.ylabel("Loss")
@@ -265,11 +263,8 @@ def make_prediction_on_test_data(test_set, config_dict):
     test_dataset_transformed = test_dataset_transformed.astype('float')
     X, Y = to_sequences(test_dataset_transformed, test_dataset_transformed, n_steps = config_dict['n_steps'])
 
-     #Load model and make prediction based on test data
+    #Load model and make prediction based on test data
     X_pred_test = make_prediction(X, config_dict)
-    # prediction_df = pd.DataFrame(X_pred_test[0], columns=[f"Predicted {test_set.columns[config_dict['target_col']]}"])
-    # prediction_df = do_inverse_transform(prediction_df, config_dict)
-
 
     # Calculate MAE threshold
     test_loss = np.mean(np.abs(X_pred_test - X), axis=1)
@@ -289,11 +284,8 @@ def make_prediction_on_test_data(test_set, config_dict):
     fig.add_trace(go.Scatter(x=test_score_df.index, y=test_score_df['threshold'], name='Threshold'))
     fig.update_layout(showlegend=True, title='Test loss vs. Threshold')
     fig.show()
-
-    # test_set.join(prediction_df, how='outer')
     
     return test_score_df
-
 
 def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
 
@@ -323,6 +315,7 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
 
     return fig
 
+#Datasets
 raw_dataset = load_gold_prices_dataset()
 # raw_dataset = delhi_climate_data()
 # raw_dataset = raw_dataset[['meantemp']].copy()
@@ -351,9 +344,10 @@ X, Y = to_sequences(df_for_training_scaled, df_for_training_scaled, n_steps = co
 #Build LSTM Model
 config_dict = build_train_multivariate_lstm_model(config_dict, X, Y)
 
+#Calculate MAE threshold based on training data
 mae_threshold,config_dict = get_mae_threshold_training_set(X, config_dict)
 
-#Predict based on Test data (X_test)
+#Predict
 test_prediction_df = make_prediction_on_test_data(raw_dataset.copy(), config_dict)
 
 #make anomaly plots
