@@ -323,11 +323,11 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
 
     return fig
 
-# raw_dataset = load_gold_prices_dataset()
+raw_dataset = load_gold_prices_dataset()
 # raw_dataset = delhi_climate_data()
 # raw_dataset = raw_dataset[['meantemp']].copy()
 # raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
-raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
+# raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
 
 #Create model/script configuration
 config_dict = model_configs(raw_dataset.copy())
