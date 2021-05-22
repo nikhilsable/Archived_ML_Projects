@@ -330,13 +330,14 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
 # raw_dataset = raw_dataset[['meantemp']].copy()
 # raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
 raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
+# raw_dataset =  raw_dataset[:'2018-02-15']
 
 #Create model/script configuration
 config_dict = model_configs(raw_dataset.copy())
 
 #Split into train and test sets
-dataset = raw_dataset.copy().iloc[:-(config_dict['lookahead']+config_dict['n_steps']), :]
-test_set = raw_dataset.iloc[-(config_dict['lookahead']+config_dict['n_steps']):, :]
+dataset = raw_dataset.copy().iloc[:-(config_dict['n_steps']), :]
+test_set = raw_dataset.iloc[-(config_dict['n_steps']):, :]
 
 #Scale data
 dataset_scaled = scale_and_save_scaler(dataset.copy(), config_dict)
