@@ -293,6 +293,11 @@ def make_prediction_on_test_data(test_set, config_dict):
     fig.add_trace(go.Scatter(x=test_score_df.index, y=test_score_df['threshold'], name='Threshold'))
     fig.update_layout(showlegend=True, title='Test loss vs. Threshold')
     fig.show()
+
+    #Plot residuals
+    plt.plot(X.flatten())
+    plt.plot(X_pred_test.flatten(), alpha=0.2)
+    plt.show()
     
     return test_score_df
 
@@ -325,11 +330,11 @@ def  make_anomaly_plots(test_prediction_df, test_set, config_dict):
     return fig
 
 #Datasets
-# raw_dataset = load_gold_prices_dataset()
+raw_dataset = load_gold_prices_dataset()
 # raw_dataset = delhi_climate_data()
 # raw_dataset = raw_dataset[['meantemp']].copy()
 # raw_dataset = load_sensor_dataset() # NOTE : 'minute' freq
-raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
+# raw_dataset = pd.read_csv('spx.csv', parse_dates=['date'], index_col='date')
 # raw_dataset =  raw_dataset[:'2018-02-15']
 
 #Create model/script configuration
