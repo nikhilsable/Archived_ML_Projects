@@ -75,8 +75,8 @@ def split_sequences(df, config_dict):
     n_past = config_dict['n_steps']  # Number of past days we want to use to predict the future
 
     for i in range(n_past, len(df) - n_future + 1):
-        trainX.append(df_for_training_scaled[i - n_past:i, :])
-        trainY.append(df_for_training_scaled[i :i + n_future, config_dict['target_col']]) # for target variable
+        trainX.append(df[i - n_past:i, :])
+        trainY.append(df[i :i + n_future, config_dict['target_col']]) # for target variable
 
     X, Y = np.array(trainX), np.array(trainY)
 
