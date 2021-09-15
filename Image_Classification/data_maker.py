@@ -17,8 +17,8 @@ import numpy as np
 def initialize_configs():
     config_dict = {
         "IMG_SIZE": 256,
-        "train_data_path": "\\\\TBD.com\\us\\shared\\us018601\\CS_DAV\\DataFolder\\cone_stain_images_WK2133\\train\\*",
-        "test_data_path": "\\\\TBD.com\\us\\shared\\us018601\\CS_DAV\\DataFolder\\cone_stain_images_WK2133\\test\\*",
+        "train_data_path": "\\\\TBD.com\\us\\shared\\rwe\\CS_DAV\\DataFolder\\cone_stain_images_WK2133\\train\\*",
+        "test_data_path": "\\\\TBD.com\\us\\shared\\wer\\CS_DAV\\DataFolder\\cone_stain_images_WK2133\\test\\*",
     }
 
     return config_dict
@@ -39,9 +39,6 @@ def convert_images_to_array(images):
 
 
 def get_data(config_dict):
-
-    # print(os.listdir(r"C:\\Users\\TBD\\Documents\\cone_stain_data\\cone_stain_images\\"))
-
     # Training Data
     train_images = []
     train_labels = []
@@ -79,7 +76,6 @@ def get_data(config_dict):
 
 
 def main():
-
     # Create configuration dictionary
     config_dict = initialize_configs()
 
@@ -87,9 +83,6 @@ def main():
     train_images, train_labels, test_images, test_labels = get_data(config_dict)
 
     return train_images, train_labels, test_images, test_labels
-
-    print("*********** Model training/testing data retrived..**************")
-
 
 if __name__ == "__main__":
     main()

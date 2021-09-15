@@ -7,9 +7,6 @@ from sklearn import metrics, preprocessing
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
 
-# from sklearn.ensemble import AdaBoostClassifier
-
-
 def model_configs():
 
     config_dict = {
@@ -92,7 +89,8 @@ def build_classifier_model(config_dict, train_images, train_labels, test_images,
 
         # Load model wothout classifier/fully connected layers
         VGG_model = VGG16(
-            weights="imagenet", include_top=False, input_shape=(config_dict["IMG_SIZE"], config_dict["IMG_SIZE"], 3)
+            weights="imagenet", include_top=False, input_shape=(config_dict["IMG_SIZE"],
+                                                                config_dict["IMG_SIZE"], 3)
         )
 
         # Make loaded layers as non-trainable (because we want pre-trained weights)
@@ -110,9 +108,6 @@ def build_classifier_model(config_dict, train_images, train_labels, test_images,
 
         # RANDOM FOREST
         RF_model = RandomForestClassifier(n_estimators=50, random_state=42)
-
-        # ADABoost Classifier
-        # RF_model = AdaBoostClassifier(n_estimators = 50, random_state = 42)
 
         # Train the model on training data
         RF_model.fit(X_for_RF, y_train)  # For sklearn no one hot encoding
@@ -143,29 +138,14 @@ def build_classifier_model(config_dict, train_images, train_labels, test_images,
         joblib.dump(RF_model, config_dict["classifier_model_name"] + ".joblib")
         print("RF classifier model saved...")
 
-        # To check specific examples
-        # img = x_test[0]
-        # plt.imshow(img)
-        # plt.show()
-
-        # input_img = np.expand_dims(img, axis=0) #Expand dims so the input is (num images, x, y, c)
-        # input_img_feature=VGG_model.predict(input_img)
-        # input_img_features=input_img_feature.reshape(input_img_feature.shape[0], -1)
-        # prediction_RF = RF_model.predict(input_img_features)[0]
-        # prediction_RF = le.inverse_transform([prediction_RF])  #Reverse the label encoder to original name
-        # print("The prediction for this image is: ", prediction_RF)
-        # print("The actual label for this image is: ", test_labels[0])
-
     else:
         pass
 
 
 def main():
-
     config_dict = model_configs()
     train_images, train_labels, test_images, test_labels = data_maker.main()
     build_classifier_model(config_dict, train_images, train_labels, test_images, test_labels)
-
 
 if __name__ == "__main__":
     main()
