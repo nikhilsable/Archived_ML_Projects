@@ -1,0 +1,16 @@
+Index: .vscode/settings.json
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>{\r\n    \"python.pythonPath\": \"C:\\\\Users\\\\nikhi\\\\.conda\\\\envs\\\\tf2dot0\\\\python.exe\",\r\n    \"editor.fontSize\": 13,\r\n    \"jupyter.sendSelectionToInteractiveWindow\": true\r\n}
+===================================================================
+diff --git a/.vscode/settings.json b/.vscode/settings.json
+--- a/.vscode/settings.json	
++++ b/.vscode/settings.json	
+@@ -1,5 +1,5 @@
+ {
+-    "python.pythonPath": "C:\\Users\\nikhi\\.conda\\envs\\tf2dot0\\python.exe",
++    "python.pythonPath": "C:\\Users\\nsable\\AppData\\Local\\Continuum\\anaconda3\\python.exe",
+     "editor.fontSize": 13,
+     "jupyter.sendSelectionToInteractiveWindow": true
+ }
+\ No newline at end of file
