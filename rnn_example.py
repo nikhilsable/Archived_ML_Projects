@@ -262,8 +262,6 @@ model.compile(loss="mse", optimizer=keras.optimizers.Adam(lr=0.01), metrics=[las
 history = model.fit(X_train, Y_train, epochs=20,
                     validation_data=(X_valid, Y_valid))
 
-mm
-
 #Simple LSTM
 np.random.seed(42)
 tf.random.set_seed(42)
