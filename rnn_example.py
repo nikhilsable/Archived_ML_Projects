@@ -175,7 +175,7 @@ tf.random.set_seed(42)
 
 model = keras.models.Sequential([keras.layers.SimpleRNN(1, input_shape=[None, 1])])
 
-optimizer = keras.optimizers.Adam(lr=0.005)
+optimizer = keras.optimizers.Adam(learning_rate=0.005)
 model.compile(loss="mse", optimizer=optimizer)
 history = model.fit(X_train, y_train, epochs=20, validation_data=(X_valid, y_valid))
 
