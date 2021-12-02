@@ -1,6 +1,7 @@
 import sys
 
 assert sys.version_info >= (3, 5)
+import os
 
 # Scikit-Learn ≥0.20 is required
 import sklearn
@@ -12,8 +13,6 @@ import tensorflow as tf
 from tensorflow import keras
 
 assert tf.__version__ >= "2.0"
-
-import os
 
 # Common imports
 import numpy as np
