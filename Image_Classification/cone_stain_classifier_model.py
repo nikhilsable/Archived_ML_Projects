@@ -60,6 +60,72 @@ def scale_pixel_values(x):
 
     return scaled_pixel_values
 
+def visualize_cnn_filters(cnn_model):
+    # Iterate thru all the layers of the model
+    for layer in cnn_model.layers:
+        if "conv" in layer.name:
+            weights, bias = layer.get_weights()
+
+            # normalize filter values between  0 and 1 for visualization
+            f_min, f_max = weights.min(), weights.max()
+            filters = (weights - f_min) / (f_max - f_min)
+            print(filters.shape[3])
+            filter_cnt = 1
+
+            # plotting all the filters
+            for i in range(filters.shape[3]):
+                fig = plt.figure(figsize=(20, 20))
+                # get the filters
+                filt = filters[:, :, :, i]
+                # plotting each of the channel, color image RGB channels
+                for j in range(filters.shape[0]):
+                    ax = plt.subplot(filters.shape[3], filters.shape[0], filter_cnt)
+                    ax.set_xticks([])
+                    ax.set_yticks([])
+                    plt.imshow(filt[:, :, j])
+                    filter_cnt += 1
+            plt.show()
+
+
+def visualize_cnn_activation_maps(input_img, cnn_model):
+    # Define a new Model, Input= image
+    # Output= intermediate representations for all layers in the
+    # previous model after the first.
+    successive_outputs = [layer.output for layer in cnn_model.layers[1:]]
+    # visualization_model = Model(img_input, successive_outputs)
+    visualization_model = Model(inputs=cnn_model.input, outputs=successive_outputs)
+    # Get intermediate representations.
+    successive_feature_maps = visualization_model.predict(input_img)
+    # Retrieve are the names of the layers, so can have them as part of our plot
+    layer_names = [layer.name for layer in cnn_model.layers]
+    for layer_name, feature_map in zip(layer_names, successive_feature_maps):
+        print(feature_map.shape)
+        if len(feature_map.shape) == 4:
+
+            # Plot Feature maps for the conv / maxpool layers, not the fully-connected layers
+            n_features = feature_map.shape[-1]  # number of features in the feature map
+            size = feature_map.shape[1]  # feature map shape (1, size, size, n_features)
+
+            # Image Matrix
+            display_grid = np.zeros((size, size * n_features))
+
+            # Postprocess the feature to be visually palatable
+            for i in range(n_features):
+                x = feature_map[0, :, :, i]
+                x -= x.mean()
+                x /= x.std()
+                x *= 64
+                x += 128
+                x = np.clip(x, 0, 255).astype("uint8")
+                # Tile each filter into a horizontal grid
+                display_grid[:, i * size : (i + 1) * size] = x
+            # Display the grid
+            scale = 20.0 / n_features
+            plt.figure(figsize=(scale * n_features, scale))
+            plt.title(layer_name)
+            plt.grid(False)
+            plt.imshow(display_grid, aspect="auto", cmap="viridis")
+            # plt.savefig(f"{layer_name}_activation_map.png",dpi=600)
 
 def build_classifier_model(config_dict, train_images, train_labels, test_images, test_labels):
 
