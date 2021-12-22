@@ -1,11 +1,15 @@
-import data_maker
 import joblib
 import matplotlib.pyplot as plt
+import numpy as np
 import seaborn as sns
+import tensorflow as tf
 from keras.applications.vgg16 import VGG16
 from sklearn import metrics, preprocessing
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import confusion_matrix
+
+import data_maker
+
 
 def model_configs():
 
@@ -60,6 +64,7 @@ def scale_pixel_values(x):
 
     return scaled_pixel_values
 
+
 def visualize_cnn_filters(cnn_model):
     # Iterate thru all the layers of the model
     for layer in cnn_model.layers:
@@ -74,7 +79,7 @@ def visualize_cnn_filters(cnn_model):
 
             # plotting all the filters
             for i in range(filters.shape[3]):
-                fig = plt.figure(figsize=(20, 20))
+                # fig = plt.figure(figsize=(20, 20))
                 # get the filters
                 filt = filters[:, :, :, i]
                 # plotting each of the channel, color image RGB channels
@@ -127,6 +132,34 @@ def visualize_cnn_activation_maps(input_img, cnn_model):
             plt.imshow(display_grid, aspect="auto", cmap="viridis")
             # plt.savefig(f"{layer_name}_activation_map.png",dpi=600)
 
+
+def plot_saliency_map(input_img, input_image_label, model):
+
+    raw_img = input_img
+    input_img = np.expand_dims(input_img, 0)
+
+    images = tf.Variable(input_img, dtype=float)
+
+    with tf.GradientTape() as tape:
+        pred = model(images, training=False)
+        class_idxs_sorted = np.argsort(pred.numpy().flatten())[::-1]
+        loss = pred[0][class_idxs_sorted[0]]
+
+    grads = tape.gradient(loss, images)
+    # grads.shape
+    dgrad_abs = tf.math.abs(grads)
+    dgrad_max_ = np.max(dgrad_abs, axis=3)[0]
+    ## normalize to range between 0 and 1
+    arr_min, arr_max = np.min(dgrad_max_), np.max(dgrad_max_)
+    grad_eval = (dgrad_max_ - arr_min) / (arr_max - arr_min + 1e-18)
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+    plt.title(input_image_label)
+    axes[0].imshow(raw_img)
+    i = axes[1].imshow(grad_eval, cmap="jet", alpha=0.8)
+    fig.colorbar(i)
+
+
 def build_classifier_model(config_dict, train_images, train_labels, test_images, test_labels):
 
     if config_dict["training"] == 1:
@@ -155,8 +188,7 @@ def build_classifier_model(config_dict, train_images, train_labels, test_images,
 
         # Load model wothout classifier/fully connected layers
         VGG_model = VGG16(
-            weights="imagenet", include_top=False, input_shape=(config_dict["IMG_SIZE"],
-                                                                config_dict["IMG_SIZE"], 3)
+            weights="imagenet", include_top=False, input_shape=(config_dict["IMG_SIZE"], config_dict["IMG_SIZE"], 3)
         )
 
         # Make loaded layers as non-trainable (because we want pre-trained weights)
@@ -212,6 +244,7 @@ def main():
     config_dict = model_configs()
     train_images, train_labels, test_images, test_labels = data_maker.main()
     build_classifier_model(config_dict, train_images, train_labels, test_images, test_labels)
+
 
 if __name__ == "__main__":
     main()
