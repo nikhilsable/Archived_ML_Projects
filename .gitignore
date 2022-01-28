@@ -14,7 +14,7 @@ logs/*
 tf_logs/*
 images/**
 datasets/**
-.vscode
+.vscode/**
 
 
 
